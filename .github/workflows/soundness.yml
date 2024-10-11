@@ -43,6 +43,10 @@ on:
         type: boolean
         description: "Boolean to enable the format check job. Defaults to true."
         default: true
+      format_check_container_image:
+        type: string
+        description: "Container image for the format check job. Defaults to latest Swift Ubuntu image."
+        default: "swift:6.0-noble"
       shell_check_enabled:
         type: boolean
         description: "Boolean to enable the shell check job. Defaults to true."
@@ -51,6 +55,10 @@ on:
         type: string
         description: "Container image for the shell check job. Defaults to latest Swift Ubuntu image."
         default: "swift:6.0-noble"
+      yamllint_check_enabled:
+        type: boolean
+        description: "Boolean to enable the YAML lint job. Defaults to true."
+        default: true
 
 ## We are cancelling previously triggered workflow runs
 concurrency:
@@ -143,7 +151,7 @@ jobs:
     if: ${{ inputs.format_check_enabled }}
     runs-on: ubuntu-latest
     container:
-      image: swift:6.0-jammy
+      image: ${{ inputs.format_check_container_image }}
     timeout-minutes: 10
     steps:
       - name: Checkout repository
@@ -177,3 +185,18 @@ jobs:
         run: |
           apt-get -qq update && apt-get -qq -y install shellcheck
           git ls-files -z '*.sh' | xargs -0 shellcheck
+
+  yaml-lint:
+    name: Lint YAML
+    if: ${{ inputs.yamllint_check_enabled }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run yamllint
+        run: |
+          curl -s https://raw.githubusercontent.com/swiftlang/github-workflows/refs/heads/main/.github/workflows/configs/yamllint.yml > /tmp/yamllint.yml
+          yamllint --strict --config-file /tmp/yamllint.yml ${GITHUB_WORKSPACE}

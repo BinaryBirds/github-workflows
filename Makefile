@@ -42,7 +42,6 @@ run-clean:
 ## params: -n: name, -p: port
 run-openapi:
 	curl -s $(baseUrl)/run-openapi-server.sh | bash
-	./scripts/run-openapi-server.sh -n accounts-api
 
 lint:
 	curl -s $(baseUrl)/run-swift-format.sh | bash

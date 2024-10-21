@@ -11,7 +11,16 @@ log "$REPO_ROOT"
 
 log "222"
 #contributors=$(git shortlog -es | cut -f2 | sed 's/^/- /')
-contributors=$(git shortlog -es | awk '{$1=""; print "- " $0}')
+
+contributors=$(git shortlog -es)
+if [ -z "$contributors" ]; then
+    log "No contributors found."
+	exit 0
+else
+    contributors=$(echo "$contributors" | awk '{$1=""; print "- " $0}')
+    echo "Contributors list:"
+    echo "$contributors"
+fi
 
 log "333"
 

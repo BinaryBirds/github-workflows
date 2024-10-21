@@ -10,7 +10,8 @@ REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
 log "$REPO_ROOT"
 
 log "222"
-contributors=$(git shortlog -es | cut -f2 | sed 's/^/- /')
+#contributors=$(git shortlog -es | cut -f2 | sed 's/^/- /')
+contributors=$(git shortlog -es | awk '{$1=""; print "- " $0}')
 
 log "333"
 

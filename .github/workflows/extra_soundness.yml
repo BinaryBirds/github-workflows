@@ -10,7 +10,7 @@ on:
     
 ## We are cancelling previously triggered workflow runs
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-soundness
+  group: ${{ github.workflow }}-${{ github.ref }}-extra-soundness
   cancel-in-progress: true
 
 jobs:

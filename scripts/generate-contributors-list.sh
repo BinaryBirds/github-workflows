@@ -12,6 +12,8 @@ log "111"
 # Attempt to capture the output of git shortlog
 contributors=$(git shortlog -es 2>/dev/null)
 
+log "222"
+
 # Check if the command succeeded and if the result is empty
 if [ $? -ne 0 ]; then
     fatal "Error: Unable to run 'git shortlog'. Are you in a valid git repository?"

@@ -6,27 +6,17 @@ error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
 REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
-
-log "111"
-
-# Attempt to capture the output of git shortlog
 contributors=$(git shortlog -es 2>/dev/null)
 
-log "222"
-
-# Check if the command succeeded and if the result is empty
 if [ $? -ne 0 ]; then
     fatal "Error: Unable to run 'git shortlog'. Are you in a valid git repository?"
 fi
 
-# Check if the output is empty
 if [ -z "$contributors" ]; then
-    echo "No contributors found."
+    log "No contributors found."
+    exit 0
 else
-    # Process and format the output
     contributors=$(echo "$contributors" | awk '{$1=""; print "- " $0}')
-    echo "Contributors list:"
-    echo "$contributors"
 fi
 
 log "Creating file..."

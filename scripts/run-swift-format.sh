@@ -16,8 +16,17 @@ done
 
 SWIFTFORMAT_BIN=${SWIFTFORMAT_BIN:-$(command -v swift-format)} || fatal "❌ SWIFTFORMAT_BIN unset and no swift-format on PATH"
 
-git -C "${REPO_ROOT}" ls-files -z '*.swift' | xargs -0 "${SWIFTFORMAT_BIN}" "${FORMAT_COMMAND[@]}" --parallel \
-&& SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
+if [[ -f .swiftformatignore ]]; then
+    log "Found swiftformatignore file..."
+    tr '\n' '\0' < .swiftformatignore| xargs -0 -I% printf '":(exclude)%" '| xargs git ls-files -z '*.swift' \
+    | xargs -0 "${SWIFTFORMAT_BIN}" "${FORMAT_COMMAND[@]}" --parallel \
+    && SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
+
+else
+    git -C "${REPO_ROOT}" ls-files -z '*.swift' | 
+    xargs -0 "${SWIFTFORMAT_BIN}" "${FORMAT_COMMAND[@]}" --parallel \
+    && SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
+fi
 
 if [ "${SWIFT_FORMAT_RC}" -ne 0 ]; then
   fatal "❌ Running swift-format produced errors.

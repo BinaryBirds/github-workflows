@@ -6,6 +6,8 @@ log() { printf -- "** %s\n" "$*" >&2; }
 REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
 contributors=$(git shortlog -es | cut -f2 | sed 's/^/- /' )
 
+echo "???"
+
 log "Creating file..."
 
 cat > "$REPO_ROOT/CONTRIBUTORS.txt" <<- EOF

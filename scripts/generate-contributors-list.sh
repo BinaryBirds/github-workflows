@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -o pipefail
+set -euo pipefail
 
 log() { printf -- "** %s\n" "$*" >&2; }
 

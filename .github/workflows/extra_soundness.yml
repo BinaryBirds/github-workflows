@@ -1,4 +1,4 @@
-name: Soundness
+name: Extra soundness
 
 on:
   workflow_call:

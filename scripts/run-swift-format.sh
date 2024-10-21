@@ -30,8 +30,8 @@ fi
 
 if [ "${SWIFT_FORMAT_RC}" -ne 0 ]; then
   fatal "❌ Running swift-format produced errors.
-  To fix, run the following command:
-    % ./scripts/run-swift-format.sh --fix
+  To fix:
+    % run run-swift-format.sh with paramter: --fix
   "
 fi
 

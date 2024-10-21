@@ -6,7 +6,7 @@ error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
 REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
-UNACCEPTABLE_LANGUAGE_PATTERNS_PATH="${REPO_ROOT}/scripts/unacceptable-language.txt"
+UNACCEPTABLE_LANGUAGE_PATTERNS_PATH="${REPO_ROOT}/unacceptable-language.txt"
 
 log "Checking for unacceptable language..."
 PATHS_WITH_UNACCEPTABLE_LANGUAGE=$(git -C "${REPO_ROOT}" grep \

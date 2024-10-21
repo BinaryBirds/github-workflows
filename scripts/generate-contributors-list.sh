@@ -3,14 +3,16 @@ set -o pipefail
 
 log() { printf -- "** %s\n" "$*" >&2; }
 
-echo "111"
+log "111"
 
 REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
 
-echo "222"
+log "$REPO_ROOT"
+
+log "222"
 contributors=$(git shortlog -es | cut -f2 | sed 's/^/- /')
 
-echo "33"
+log "333"
 
 log "Creating file..."
 

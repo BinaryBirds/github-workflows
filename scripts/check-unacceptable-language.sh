@@ -5,15 +5,17 @@ log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
-REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
-UNACCEPTABLE_LANGUAGE_PATTERNS_PATH="${REPO_ROOT}/unacceptable-language.txt"
+UNACCEPTABLE_WORD_LIST="blacklist whitelist slave master sane sanity insane insanity kill killed killing hang hung hanged hanging"
 
-log "Checking for unacceptable language..."
-PATHS_WITH_UNACCEPTABLE_LANGUAGE=$(git -C "${REPO_ROOT}" grep \
--l -F -w \
--f "${UNACCEPTABLE_LANGUAGE_PATTERNS_PATH}" \
--- ":(exclude)${UNACCEPTABLE_LANGUAGE_PATTERNS_PATH}" \
-) || true | /usr/bin/paste -s -d " " -
+PATHS_WITH_UNACCEPTABLE_LANGUAGE=
+if [[ -f .unacceptablelanguageignore ]]; then
+    log "Found unacceptablelanguageignore file..."
+    log "Checking for unacceptable language..."
+    PATHS_WITH_UNACCEPTABLE_LANGUAGE=$(tr '\n' '\0' < .unacceptablelanguageignore | xargs -0 -I% printf '":(exclude)%" '| xargs git grep -i -I -w -H -n --column -E "${UNACCEPTABLE_WORD_LIST// /|}" | grep -v "ignore-unacceptable-language") || true | /usr/bin/paste -s -d " " -
+else
+    log "Checking for unacceptable language..."
+    PATHS_WITH_UNACCEPTABLE_LANGUAGE=$(git grep -i -I -w -H -n --column -E "${UNACCEPTABLE_WORD_LIST// /|}" | grep -v "ignore-unacceptable-language") || true | /usr/bin/paste -s -d " " -
+fi
 
 if [ -n "${PATHS_WITH_UNACCEPTABLE_LANGUAGE}" ]; then
   fatal "❌ Found unacceptable language in files: ${PATHS_WITH_UNACCEPTABLE_LANGUAGE}."

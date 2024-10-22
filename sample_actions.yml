@@ -35,12 +35,4 @@ jobs:
       enable_windows_checks : false
       linux_build_command: "swift test --parallel"
       linux_exclude_swift_versions: "[{\"swift_version\": \"5.8\"}, {\"swift_version\": \"5.9\"}, {\"swift_version\": \"nightly\"}, {\"swift_version\": \"nightly-main\"}, {\"swift_version\": \"nightly-6.0\"}]"
-
-
-    #steps:
-    #  - name: Add keys to ssh-agent
-    #    uses: webfactory/ssh-agent@v0.7.0
-    #    with:
-    #      ssh-private-key: |
-    #        ${{ secrets.SSH_SYSTEM_API }}
-    #        ${{ secrets.SSH_SYSTEM_MODULE }}
+      

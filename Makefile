@@ -48,3 +48,5 @@ lint:
 
 format:
 	curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix 
+
+check: symlinks language deps lint

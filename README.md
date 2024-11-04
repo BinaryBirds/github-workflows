@@ -1,7 +1,7 @@
 # GitHub Actions Workflows
 This repository contains a reusable workflow and various bash scripts designed to streamline tasks in a Swift project.
 
-The workflow utilizes the [official swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) to perform checks and run Swift tests on the repository.
+The workflow utilizes the official [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) to perform checks and run Swift tests on the repository.
 
 ## Install
 No installation required.

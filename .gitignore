@@ -8,8 +8,5 @@ xcuserdata/
 Package.resolved
 db.sqlite
 migration-entries.json
-#openapi.yaml
-#Types.swift
-#Server.swift
 /storage
 .env

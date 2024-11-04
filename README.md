@@ -60,7 +60,7 @@ This script generates a list of contributors for the repository. It uses the git
 Usage: `make contributors`
 
 ### install-swift-format.sh
-This script installs the swift-format tool, the version can be optionally defined using the `-v` parameter. The default version is **510.1.0**.
+This script installs the swift-format tool, the version can be optionally defined using the `-v` parameter. If no version is specified as a parameter, the latest version will be installed.
 
 Example to add the extra parameter in the **Makefile**:
 `install-format:
@@ -70,7 +70,7 @@ Example to add the extra parameter in the **Makefile**:
 Usage: `make install-format`
 
 ### install-swift-openapi-generator.sh
-This script installs the Swift OpenAPI generator tool, the version can be optionally defined using the `-v` parameter. The default version is **1.2.1**.
+This script installs the Swift OpenAPI generator tool, the version can be optionally defined using the `-v` parameter. If no version is specified as a parameter, the latest version will be installed.
 
 Example to add the extra parameter in the **Makefile**:
 `install-openapi:

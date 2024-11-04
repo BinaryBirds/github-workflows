@@ -5,8 +5,8 @@ log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
-#https://github.com/apple/swift-format
-VERSION="510.1.0"
+REPO="https://github.com/swiftlang/swift-format" 
+VERSION=$(git ls-remote --tags --sort="v:refname" "${REPO}" | tail -n1 | sed 's/.*\///; s/\^{}//')
 while getopts v: flag
 do
     case "${flag}" in
@@ -14,7 +14,7 @@ do
         *)
     esac
 done
-curl -L -o "${VERSION}.tar.gz" "https://github.com/apple/swift-format/archive/refs/tags/${VERSION}.tar.gz"
+curl -L -o "${VERSION}.tar.gz" "${REPO}/archive/refs/tags/${VERSION}.tar.gz"
 tar -xf "${VERSION}.tar.gz"
 cd "swift-format-${VERSION}"
 swift build -c release

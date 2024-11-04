@@ -1,6 +1,6 @@
 SHELL=/bin/bash
 
-baseUrl = https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/dev/scripts
+baseUrl = https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts
 
 breakage:
 	curl -s $(baseUrl)/check-api-breakage.sh | bash

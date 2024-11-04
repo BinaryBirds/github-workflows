@@ -14,7 +14,7 @@ done
 
 SWIFTFORMAT_BIN=${SWIFTFORMAT_BIN:-$(command -v swift-format)} || fatal "❌ SWIFTFORMAT_BIN unset and no swift-format on PATH"
 
-URL="https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/dev"
+URL="https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main"
 if [ ! -f ".swift-format" ]; then
     log ".swift-format does not exist. Downloading..."
     curl -o ".swift-format" "$URL/.swift-format"

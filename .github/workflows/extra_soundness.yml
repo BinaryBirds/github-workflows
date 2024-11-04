@@ -25,4 +25,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Run local swift dependencies check
-        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/dev/scripts/check-local-swift-dependencies.sh | bash
+        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash

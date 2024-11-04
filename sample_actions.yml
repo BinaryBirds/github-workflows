@@ -9,7 +9,7 @@ jobs:
 
   bb_checks:
     name: BB Checks
-    uses: BinaryBirds/github-workflows/.github/workflows/extra_soundness.yml@dev
+    uses: BinaryBirds/github-workflows/.github/workflows/extra_soundness.yml@main
     with:
       local_swift_dependencies_check_enabled : true
 

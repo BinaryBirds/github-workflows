@@ -1,0 +1,12 @@
+.DS_Store
+.build
+.swiftpm
+.vscode
+Packages
+*.xcodeproj
+xcuserdata/
+Package.resolved
+db.sqlite
+migration-entries.json
+/storage
+.env

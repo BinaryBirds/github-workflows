@@ -32,7 +32,7 @@ tr '\n' '\0' < .swiftformatignore| xargs -0 -I% printf '":(exclude)%" '| xargs g
 if [ "${SWIFT_FORMAT_RC}" -ne 0 ]; then
   fatal "❌ Running swift-format produced errors.
   To fix:
-    % run run-swift-format.sh with paramter: --fix
+    % run make format
   "
 fi
 

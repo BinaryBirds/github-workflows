@@ -12,8 +12,6 @@ for arg in "$@"; do
   fi
 done
 
-SWIFTFORMAT_BIN=${SWIFTFORMAT_BIN:-$(command -v swift-format)} || fatal "❌ SWIFTFORMAT_BIN unset and no swift-format on PATH"
-
 URL="https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main"
 if [ ! -f ".swift-format" ]; then
     log ".swift-format does not exist. Downloading..."
@@ -26,7 +24,7 @@ if [ ! -f ".swiftformatignore" ]; then
 fi
 
 tr '\n' '\0' < .swiftformatignore| xargs -0 -I% printf '":(exclude)%" '| xargs git ls-files -z '*.swift' \
-| xargs -0 "${SWIFTFORMAT_BIN}" "${FORMAT_COMMAND[@]}" --parallel \
+| xargs -0 swift format "${FORMAT_COMMAND[@]}" --parallel \
 && SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
 
 if [ "${SWIFT_FORMAT_RC}" -ne 0 ]; then

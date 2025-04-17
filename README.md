@@ -29,10 +29,21 @@ This script executes Swift Package Manager’s documentation generation with the
 
 Usage: `make docc-warnings`
 
-### check-license-headers.sh
-Verifies that all source files contain the appropriate license headers, ensuring compliance with licensing requirements.
+### check-swift-headers.sh
+This script checks and optionally fixes Swift source file headers to ensure they follow a consistent format.
+Optional parameters can used, these extra parameters needs to be added in the **Makefile**:
+- `--fix`: Automatically fix all headers
+- `--author`: Set a custom author name (default is `"Binary Birds"`)
 
-Usage: `make license-header`
+Fix all headers:
+`fix-headers:
+	curl -s $(baseUrl)/check-swift-headers.sh | bash -s -- --fix
+`
+Fix all headers with custom author:
+`fix-headers:
+	curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- --fix --author John
+`
+Usage: `make headers`
 
 ### check-local-swift-dependencies.sh
 This script checks for local Swift package dependencies in the repository. It scans **Package.swift** files for local dependencies defined using **.package(path:)** and reports any occurrences.
@@ -58,16 +69,6 @@ Usage: `make language`
 This script generates a list of contributors for the repository. It uses the git shortlog command to gather commit information and formats it into a CONTRIBUTORS.txt file.
 
 Usage: `make contributors`
-
-### install-swift-format.sh
-This script installs the swift-format tool, the version can be optionally defined using the `-v` parameter. If no version is specified as a parameter, the latest version will be installed.
-
-Example to add the extra parameter in the **Makefile**:
-`install-format:
-	curl -s $(baseUrl)/run-swift-format.sh | bash -s -- -v 510.1.0
-`
-
-Usage: `make install-format`
 
 ### install-swift-openapi-generator.sh
 This script installs the Swift OpenAPI generator tool, the version can be optionally defined using the `-v` parameter. If no version is specified as a parameter, the latest version will be installed.

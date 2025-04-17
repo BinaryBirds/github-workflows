@@ -11,8 +11,11 @@ symlinks:
 docc-warnings:
 	curl -s $(baseUrl)/check-docc-warnings.sh | bash
 
-license-header:
-	curl -s $(baseUrl)/check-license-headers.sh | bash
+headers:
+	curl -s $(baseUrl)/check-swift-headers.sh | bash
+
+fix-headers:
+	curl -s $(baseUrl)/check-swift-headers.sh | bash -s -- --fix 
 	
 deps:
 	curl -s $(baseUrl)/check-local-swift-dependencies.sh | bash

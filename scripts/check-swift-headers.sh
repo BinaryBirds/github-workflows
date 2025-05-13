@@ -7,6 +7,7 @@ fatal() { error "$@"; exit 1; }
 
 DEFAULT_AUTHOR="Binary Birds"
 FIX_MODE=0
+HAS_ERRORS=0
 
 # Parse flags
 while [ $# -gt 0 ]; do
@@ -175,16 +176,14 @@ done < <(git ls-files -z \
 
 for file in "${PATHS_TO_CHECK_FOR_LICENSE[@]}"; do
   if ! check_or_fix_header "$file"; then
-    echo "fail" >> "$STATUS_FILE"
+    HAS_ERRORS=1
   fi
 done
 
-if grep -q "fail" "$STATUS_FILE"; then
-  rm "$STATUS_FILE"
+if [ "$HAS_ERRORS" -eq 1 ]; then
   [ "$FIX_MODE" -eq 1 ] && log "⚠️ Some headers were fixed." || error "❌ Some Swift files have header issues."
   exit 1
 else
-  rm "$STATUS_FILE"
   [ "$FIX_MODE" -eq 1 ] && log "✅ Headers inserted or updated where necessary." || log "✅ All headers are valid."
   exit 0
 fi

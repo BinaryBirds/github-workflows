@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+log() { printf -- "** %s\n" "$*" >&2; }
+error() { printf -- "** ERROR: %s\n" "$*" >&2; }
+fatal() { error "$@"; exit 1; }
+
 DEFAULT_AUTHOR="Binary Birds"
 FIX_MODE=0
+HAS_ERRORS=0
 
 # Parse flags
 while [ $# -gt 0 ]; do
@@ -19,9 +24,9 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$FIX_MODE" -eq 1 ]; then
-  echo "🛠 Fix mode enabled — header lines will be updated or inserted."
+  log "Fix mode enabled — header lines will be updated or inserted."
 else
-  echo "🔍 Checking Swift file headers..."
+  log "Checking Swift file headers..."
 fi
 
 ROOT_DIR_NAME_RAW=$(basename "$PWD")
@@ -95,41 +100,45 @@ check_or_fix_header() {
     modified=0
 
     if [ "$line1" != "$expected1" ]; then
-      echo "❌ $file - Line 1 is incorrect (expected: $expected1)"
+      error "❌ $file - Line 1 is incorrect (expected: $expected1)"
       [ "$FIX_MODE" -eq 1 ] && line1="$expected1"
       modified=1
     fi
     if [ "$line2" != "$expected2" ]; then
-      echo "❌ $file - Line 2 is incorrect (expected: $expected2)"
+      error "❌ $file - Line 2 is incorrect (expected: $expected2)"
       [ "$FIX_MODE" -eq 1 ] && line2="$expected2"
       modified=1
     fi
     if [ "$line3" != "$expected3" ]; then
-      echo "❌ $file - Line 3 is incorrect (expected: $expected3)"
+      error "❌ $file - Line 3 is incorrect (expected: $expected3)"
       [ "$FIX_MODE" -eq 1 ] && line3="$expected3"
       modified=1
     fi
     if [ "$line4" != "$expected4" ]; then
-      echo "❌ $file - Line 4 is incorrect (expected: $expected4)"
+      error "❌ $file - Line 4 is incorrect (expected: $expected4)"
       [ "$FIX_MODE" -eq 1 ] && line4="$expected4"
       modified=1
     fi
     if [ "$line5" != "$expected5" ]; then
-      echo "❌ $file - Line 5 is incorrect (expected: $expected5)"
+      error "❌ $file - Line 5 is incorrect (expected: $expected5)"
       [ "$FIX_MODE" -eq 1 ] && line5="$expected5"
       modified=1
     fi
 
-    if [ "$modified" -eq 1 ] && [ "$FIX_MODE" -eq 1 ]; then
-      tmpfile=$(mktemp)
-      echo "$line1" > "$tmpfile"
-      echo "$line2" >> "$tmpfile"
-      echo "$line3" >> "$tmpfile"
-      echo "$line4" >> "$tmpfile"
-      echo "$line5" >> "$tmpfile"
-      tail -n +6 "$file" >> "$tmpfile"
-      mv "$tmpfile" "$file"
-      echo "🔧 Fixed: $file"
+    if [ "$modified" -eq 1 ]; then
+      if [ "$FIX_MODE" -eq 1 ]; then
+        tmpfile=$(mktemp)
+        echo "$line1" > "$tmpfile"
+        echo "$line2" >> "$tmpfile"
+        echo "$line3" >> "$tmpfile"
+        echo "$line4" >> "$tmpfile"
+        echo "$line5" >> "$tmpfile"
+        tail -n +6 "$file" >> "$tmpfile"
+        mv "$tmpfile" "$file"
+        log "🔧 Fixed: $file"
+      else
+        return 1  # ✅ This is the critical fix
+      fi
     fi
   else
     if [ "$FIX_MODE" -eq 1 ]; then
@@ -142,9 +151,9 @@ check_or_fix_header() {
       echo "" >> "$tmpfile"
       cat "$file" >> "$tmpfile"
       mv "$tmpfile" "$file"
-      echo "➕ Header added: $file"
+      log "➕ Header added: $file"
     else
-      echo "❌ $file - Header missing or malformed"
+      error "❌ $file - Header missing or malformed"
       return 1
     fi
   fi
@@ -171,16 +180,14 @@ done < <(git ls-files -z \
 
 for file in "${PATHS_TO_CHECK_FOR_LICENSE[@]}"; do
   if ! check_or_fix_header "$file"; then
-    echo "fail" >> "$STATUS_FILE"
+    HAS_ERRORS=1
   fi
 done
 
-if grep -q "fail" "$STATUS_FILE"; then
-  rm "$STATUS_FILE"
-  [ "$FIX_MODE" -eq 1 ] && echo "⚠️ Some headers were fixed." || echo "❌ Some Swift files have header issues."
+if [ "$HAS_ERRORS" -eq 1 ]; then
+  [ "$FIX_MODE" -eq 1 ] && log "⚠️ Some headers were fixed." || error "❌ Some Swift files have header issues."
   exit 1
 else
-  rm "$STATUS_FILE"
-  [ "$FIX_MODE" -eq 1 ] && echo "✅ Headers inserted or updated where necessary." || echo "✅ All headers are valid."
+  [ "$FIX_MODE" -eq 1 ] && log "✅ Headers inserted or updated where necessary." || log "✅ All headers are valid."
   exit 0
 fi

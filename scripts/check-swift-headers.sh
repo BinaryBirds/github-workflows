@@ -23,9 +23,9 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$FIX_MODE" -eq 1 ]; then
-  log "🛠 Fix mode enabled — header lines will be updated or inserted."
+  log "Fix mode enabled — header lines will be updated or inserted."
 else
-  log "🔍 Checking Swift file headers..."
+  log "Checking Swift file headers..."
 fi
 
 ROOT_DIR_NAME_RAW=$(basename "$PWD")

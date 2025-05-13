@@ -125,16 +125,20 @@ check_or_fix_header() {
       modified=1
     fi
 
-    if [ "$modified" -eq 1 ] && [ "$FIX_MODE" -eq 1 ]; then
-      tmpfile=$(mktemp)
-      echo "$line1" > "$tmpfile"
-      echo "$line2" >> "$tmpfile"
-      echo "$line3" >> "$tmpfile"
-      echo "$line4" >> "$tmpfile"
-      echo "$line5" >> "$tmpfile"
-      tail -n +6 "$file" >> "$tmpfile"
-      mv "$tmpfile" "$file"
-      log "🔧 Fixed: $file"
+    if [ "$modified" -eq 1 ]; then
+      if [ "$FIX_MODE" -eq 1 ]; then
+        tmpfile=$(mktemp)
+        echo "$line1" > "$tmpfile"
+        echo "$line2" >> "$tmpfile"
+        echo "$line3" >> "$tmpfile"
+        echo "$line4" >> "$tmpfile"
+        echo "$line5" >> "$tmpfile"
+        tail -n +6 "$file" >> "$tmpfile"
+        mv "$tmpfile" "$file"
+        log "🔧 Fixed: $file"
+      else
+        return 1  # ✅ This is the critical fix
+      fi
     fi
   else
     if [ "$FIX_MODE" -eq 1 ]; then

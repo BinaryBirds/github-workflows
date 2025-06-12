@@ -37,7 +37,7 @@ jobs:
         run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash
 
   build-and-test:
-    name: Run tests with .build cache
+    name: Run tests with cache
     if: ${{ inputs.run_tests_with_cache_enabled }}
 
     runs-on: ubuntu-latest
@@ -54,23 +54,23 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y zstd
       
-      - name: Restore .build
-        id: "restore-build"
+      - name: Restore .build from cache
+        id: restore-build
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
-          restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
+          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}
+          restore-keys: |
+            swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-
 
       - name: Build package
         run: swift build --build-tests --enable-code-coverage
 
-      - name: Cache .build
-        if: steps.restore-build.outputs.cache-hit != 'true'
+      - name: Save .build cache
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}
 
       - name: Run unit tests
         run: swift test --skip-build --enable-code-coverage --parallel

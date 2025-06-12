@@ -59,9 +59,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}
-          restore-keys: |
-            swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-
+          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}
 
       - name: Build package
         run: swift build --build-tests
@@ -70,7 +68,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}
+          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}
 
       - name: Run unit tests
         run: swift test --skip-build --parallel

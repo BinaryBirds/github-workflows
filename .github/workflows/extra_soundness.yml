@@ -7,6 +7,15 @@ on:
         type: boolean
         description: "Boolean to enable the local swift dependencies check job. Defaults to false."
         default: false
+      run_tests_with_cache_enabled:
+        type: boolean
+        description: "Boolean to enable run tests with .build cache."
+        default: false
+      run_tests_swift_versions:
+        type: string
+        description: "List of Swift versions to test with."
+        default: '["6.0", "6.1"]'
+        
     
 ## We are cancelling previously triggered workflow runs
 concurrency:
@@ -26,3 +35,42 @@ jobs:
           persist-credentials: false
       - name: Run local swift dependencies check
         run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash
+
+  build-and-test:
+    name: Run tests with .build cache
+    if: ${{ inputs.run_tests_with_cache_enabled }}
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        swift: ${{ fromJson(inputs.run_tests_swift_versions) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install zstd
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y zstd
+      
+      - name: Restore .build
+        id: "restore-build"
+        uses: actions/cache/restore@v4
+        with:
+          path: .build
+          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
+
+      - name: Build package
+        run: swift build --build-tests --enable-code-coverage
+
+      - name: Cache .build
+        if: steps.restore-build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .build
+          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+
+      - name: Run unit tests
+        run: swift test --skip-build --enable-code-coverage --parallel

@@ -64,7 +64,7 @@ jobs:
             swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-
 
       - name: Build package
-        run: swift build --build-tests --enable-code-coverage
+        run: swift build --build-tests
 
       - name: Save .build cache
         uses: actions/cache/save@v4
@@ -73,4 +73,4 @@ jobs:
           key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}
 
       - name: Run unit tests
-        run: swift test --skip-build --enable-code-coverage --parallel
+        run: swift test --skip-build --parallel

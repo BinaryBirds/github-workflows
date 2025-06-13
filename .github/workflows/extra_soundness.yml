@@ -51,22 +51,24 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y zstd
-      
-      - name: Restore .build from cache
-        id: restore-build
+
+      - name: Restore .build
+        id: "restore-build"
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}
+          key: "swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          restore-keys: "swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-"
 
       - name: Build package
         run: swift build --build-tests
 
-      - name: Save .build cache
+      - name: Cache .build
+        if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}
+          key: "swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}"
 
       - name: Run unit tests
         run: swift test --skip-build --parallel

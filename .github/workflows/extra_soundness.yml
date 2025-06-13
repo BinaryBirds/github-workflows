@@ -16,8 +16,6 @@ on:
         description: "List of Swift versions to test with."
         default: '["6.0", "6.1"]'
         
-    
-## We are cancelling previously triggered workflow runs
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-extra-soundness
   cancel-in-progress: true
@@ -36,7 +34,7 @@ jobs:
       - name: Run local swift dependencies check
         run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash
 
-  build-and-test:
+  cache-and-test:
     name: Run tests with cache
     if: ${{ inputs.run_tests_with_cache_enabled }}
 

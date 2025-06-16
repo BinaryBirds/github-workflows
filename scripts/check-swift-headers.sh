@@ -158,15 +158,14 @@ check_or_fix_header() {
   return 0
 }
 
-
-EXCLUDE_FILE=".swift-header-exclude"
+IGNORE_FILE=".swiftheaderignore"
 EXCLUDE_PATTERNS=()
 
-if [ -f "$EXCLUDE_FILE" ]; then
-  log "Using exclusion list from $EXCLUDE_FILE"
+if [ -f "$IGNORE_FILE" ]; then
+  log "Using exclusion list from $IGNORE_FILE"
   while IFS= read -r line || [ -n "$line" ]; do
     [[ -n "$line" && ! "$line" =~ ^# ]] && EXCLUDE_PATTERNS+=(":(exclude)$line")
-  done < "$EXCLUDE_FILE"
+  done < "$IGNORE_FILE"
 else
   log "No exclusion file found, using default exclusions"
   EXCLUDE_PATTERNS+=(":(exclude).*")
@@ -194,7 +193,7 @@ for file in "${PATHS_TO_CHECK_FOR_LICENSE[@]}"; do
 done
 
 if [ "$HAS_ERRORS" -eq 1 ]; then
-  [ "$FIX_MODE" -eq 1 ] && log "⚠️ Some headers were fixed." || error "❌ Some Swift files have header issues."
+  [ "$FIX_MODE" -eq 1 ] && log "⚠️ Some headers were fixed." || error "❌ Some files have header issues."
   exit 1
 else
   [ "$FIX_MODE" -eq 1 ] && log "✅ Headers inserted or updated where necessary." || log "✅ All headers are valid."

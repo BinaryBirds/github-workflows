@@ -79,12 +79,10 @@ check_or_fix_header() {
   if echo "$line5" | grep -Eq "^//  Created by .+ on [0-9]{4}\. [0-9]{2}\. [0-9]{2}\.\.$"; then
     author=$(echo "$line5" | sed -E 's|^//  Created by (.+) on .+\.\.$|\1|' | sed 's/ *$//')
     date=$(echo "$line5" | sed -E 's|^//  Created by .+ on (.+)\.\.$|\1|' | sed 's/ *$//')
-    use_original_date=1
   else
     author=$(echo "$line5" | sed -nE 's|^//  Created by (.+) on .+\.$|\1|p' | sed 's/ *$//')
     date_raw=$(echo "$line5" | sed -nE 's|^//  Created by .+ on (.+)\.$|\1|p' | sed 's/ *$//')
-    use_original_date=0
-
+    
     [ -z "$author" ] && author="$DEFAULT_AUTHOR"
     date=$(normalize_date "$date_raw")
     [ -z "$date" ] && date=$(get_file_creation_date "$file")
@@ -137,7 +135,7 @@ check_or_fix_header() {
         mv "$tmpfile" "$file"
         log "🔧 Fixed: $file"
       else
-        return 1  # ✅ This is the critical fix
+        return 1
       fi
     fi
   else
@@ -160,23 +158,33 @@ check_or_fix_header() {
   return 0
 }
 
-STATUS_FILE=$(mktemp)
+IGNORE_FILE=".swiftheaderignore"
+EXCLUDE_PATTERNS=()
+
+if [ -f "$IGNORE_FILE" ]; then
+  log "Using exclusion list from $IGNORE_FILE"
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ -n "$line" && ! "$line" =~ ^# ]] && EXCLUDE_PATTERNS+=(":(exclude)$line")
+  done < "$IGNORE_FILE"
+else
+  log "No exclusion file found, using default exclusions"
+  EXCLUDE_PATTERNS+=(":(exclude).*")
+  EXCLUDE_PATTERNS+=(":(exclude)*.txt")
+  EXCLUDE_PATTERNS+=(":(exclude)*.sh")
+  EXCLUDE_PATTERNS+=(":(exclude)*.html")
+  EXCLUDE_PATTERNS+=(":(exclude)*.yaml")
+  EXCLUDE_PATTERNS+=(":(exclude)README.md")
+  EXCLUDE_PATTERNS+=(":(exclude)Package.resolved")
+  EXCLUDE_PATTERNS+=(":(exclude)Makefile")
+  EXCLUDE_PATTERNS+=(":(exclude)LICENSE")
+  EXCLUDE_PATTERNS+=(":(exclude)Package.swift")
+  EXCLUDE_PATTERNS+=(":(exclude)Docker/**")
+fi
 
 PATHS_TO_CHECK_FOR_LICENSE=()
 while IFS= read -r -d '' file; do
   PATHS_TO_CHECK_FOR_LICENSE+=("$file")
-done < <(git ls-files -z \
-  ":(exclude).*" \
-  ":(exclude)*.txt" \
-  ":(exclude)*.sh" \
-  ":(exclude)*.html" \
-  ":(exclude)*.yaml" \
-  ":(exclude)README.md" \
-  ":(exclude)Package.resolved" \
-  ":(exclude)Makefile" \
-  ":(exclude)LICENSE" \
-  ":(exclude)Package.swift" \
-  ":(exclude)Docker/**")
+done < <(git ls-files -z "${EXCLUDE_PATTERNS[@]}")
 
 for file in "${PATHS_TO_CHECK_FOR_LICENSE[@]}"; do
   if ! check_or_fix_header "$file"; then
@@ -185,7 +193,7 @@ for file in "${PATHS_TO_CHECK_FOR_LICENSE[@]}"; do
 done
 
 if [ "$HAS_ERRORS" -eq 1 ]; then
-  [ "$FIX_MODE" -eq 1 ] && log "⚠️ Some headers were fixed." || error "❌ Some Swift files have header issues."
+  [ "$FIX_MODE" -eq 1 ] && log "⚠️ Some headers were fixed." || error "❌ Some files have header issues."
   exit 1
 else
   [ "$FIX_MODE" -eq 1 ] && log "✅ Headers inserted or updated where necessary." || log "✅ All headers are valid."

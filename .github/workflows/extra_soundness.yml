@@ -15,6 +15,10 @@ on:
         type: string
         description: "List of Swift versions to test with."
         default: '["6.0", "6.1"]'
+      use_ssh_for_private_deps:
+        type: boolean
+        description: "Set up ssh-agent with SSH_PRIVATE_KEY to fetch private SwiftPM deps over SSH."
+        default: false
         
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-extra-soundness
@@ -46,6 +50,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
+      - name: Set up SSH for private SwiftPM deps
+        if: ${{ inputs.use_ssh_for_private_deps }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Trust github.com host key
+        if: ${{ inputs.use_ssh_for_private_deps }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Install zstd
         run: |

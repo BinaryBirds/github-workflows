@@ -82,10 +82,10 @@ mkdir -p "$OUTPUT_DIR"
 swift package \
   generate-documentation \
   --allow-writing-to-directory "$OUTPUT_DIR" \
+  $COMBINED_FLAG \
+  $TARGET_FLAGS \
   --output-path "$OUTPUT_DIR" \
   --transform-for-static-hosting \
-  ${REPO_NAME:+--hosting-base-path "$REPO_NAME"} \
-  $COMBINED_FLAG \
-  $TARGET_FLAGS
+  ${REPO_NAME:+--hosting-base-path "$REPO_NAME"}
 
 echo "Documentation generated in $OUTPUT_DIR"

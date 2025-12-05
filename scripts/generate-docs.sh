@@ -70,15 +70,11 @@ else
     echo "Combined documentation: disabled"
 fi
 
-echo
-
 # Clean & create docs directory
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
-# ============================================
-#  🚀 Correct SwiftPM DocC invocation order
-# ============================================
+#  SwiftPM DocC invocation
 swift package --allow-writing-to-directory "$OUTPUT_DIR" \
     generate-documentation \
     $COMBINED_FLAG \

@@ -75,21 +75,15 @@ else
     log "Combined documentation: disabled"
 fi
 
-log "Preparing output directory: $OUTPUT_DIR"
-
 # Clean & recreate docs directory
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
 #  SwiftPM DocC invocation (strict parameter ordering)
-log "Running DocC documentation generation…"
-
 swift package --allow-writing-to-directory "$OUTPUT_DIR" \
     generate-documentation \
     $COMBINED_FLAG \
-    $TARGET_FLAGS \
+    "$TARGET_FLAGS" \
     --output-path "$OUTPUT_DIR" \
     --transform-for-static-hosting \
     ${REPO_NAME:+--hosting-base-path "$REPO_NAME"}
-
-log "Documentation generated in $OUTPUT_DIR"

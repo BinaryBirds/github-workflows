@@ -79,8 +79,7 @@ mkdir -p "$OUTPUT_DIR"
 # ============================================
 #  🚀 Correct SwiftPM DocC invocation order
 # ============================================
-swift package \
-    --allow-writing-to-directory "$OUTPUT_DIR" \
+swift package --allow-writing-to-directory "$OUTPUT_DIR" \
     generate-documentation \
     $COMBINED_FLAG \
     $TARGET_FLAGS \

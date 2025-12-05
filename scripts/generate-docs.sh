@@ -1,5 +1,9 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+
+log()   { printf -- "** %s\n" "$*" >&2; }
+error() { printf -- "** ERROR: %s\n" "$*" >&2; }
+fatal() { error "$@"; exit 1; }
 
 OUTPUT_DIR="./docs"
 CONFIG_FILE=".doccTargetList"
@@ -18,9 +22,9 @@ fi
 load_from_config() {
     TARGETS=$(grep -v '^\s*$' "$CONFIG_FILE")
     if [ -z "$TARGETS" ]; then
-        echo "Error: $CONFIG_FILE is empty."
-        exit 1
+        fatal "$CONFIG_FILE exists but contains no valid targets."
     fi
+
     for TARGET in $TARGETS; do
         TARGET_FLAGS="$TARGET_FLAGS --target $TARGET"
     done
@@ -29,8 +33,7 @@ load_from_config() {
 # Auto-detect documentable Swift targets
 auto_detect_targets() {
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq required (install with: brew install jq)"
-        exit 1
+        fatal "jq is required (install with: brew install jq)"
     fi
 
     TARGETS=$(swift package dump-package \
@@ -39,8 +42,7 @@ auto_detect_targets() {
             | .name')
 
     if [ -z "$TARGETS" ]; then
-        echo "Error: no documentable targets found."
-        exit 1
+        fatal "No documentable targets found."
     fi
 
     for TARGET in $TARGETS; do
@@ -48,33 +50,40 @@ auto_detect_targets() {
     done
 }
 
-# Pick source of targets
+# Choose config file OR auto-detect
 if [ -f "$CONFIG_FILE" ]; then
+    log "Using targets from $CONFIG_FILE"
     load_from_config
 else
+    log "Auto-detecting Swift targets"
     auto_detect_targets
 fi
 
 # Count real targets
 TARGET_COUNT=$(printf "%s\n" "$TARGETS" | grep -c .)
 
-echo "Detected targets:"
+log "Targets detected:"
 printf "%s\n" "$TARGETS"
+log "Target count: $TARGET_COUNT"
 
-# Enable combined docs if needed
+# Enable combined documentation for multi-target packages
 if [ "$TARGET_COUNT" -gt 1 ]; then
     COMBINED_FLAG="--enable-experimental-combined-documentation"
-    echo "Combined documentation: enabled"
+    log "Combined documentation: ENABLED"
 else
     COMBINED_FLAG=""
-    echo "Combined documentation: disabled"
+    log "Combined documentation: disabled"
 fi
 
-# Clean & create docs directory
+log "Preparing output directory: $OUTPUT_DIR"
+
+# Clean & recreate docs directory
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
-#  SwiftPM DocC invocation
+#  SwiftPM DocC invocation (strict parameter ordering)
+log "Running DocC documentation generation…"
+
 swift package --allow-writing-to-directory "$OUTPUT_DIR" \
     generate-documentation \
     $COMBINED_FLAG \
@@ -83,4 +92,4 @@ swift package --allow-writing-to-directory "$OUTPUT_DIR" \
     --transform-for-static-hosting \
     ${REPO_NAME:+--hosting-base-path "$REPO_NAME"}
 
-echo "Documentation generated in $OUTPUT_DIR"
+log "Documentation generated in $OUTPUT_DIR"

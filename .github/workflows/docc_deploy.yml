@@ -1,0 +1,67 @@
+name: DocC Deploy
+
+on:
+  workflow_call:
+    inputs:
+      docc_swift_version:
+        type: string
+        description: "Swift version used to generate DocC documentation."
+        default: "6.2"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-docc
+  cancel-in-progress: true
+
+
+jobs:
+
+  generate-docc:
+    name: Generate DocC documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Swift ${{ inputs.docc_swift_version }}
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: ${{ inputs.docc_swift_version }}
+
+      - name: Install jq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+      - name: Generate DocC documentation
+        run: |
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/generate-docc.sh | bash
+
+      - name: Upload DocC artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+
+  deploy:
+    name: Deploy DocC to GitHub Pages
+    needs: generate-docc
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

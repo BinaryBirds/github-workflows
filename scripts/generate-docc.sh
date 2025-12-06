@@ -6,10 +6,19 @@ error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
 OUTPUT_DIR="./docs"
-CONFIG_FILE=".doccTargetList"
+TARGETS_FILE=".doccTargetList"
 TARGETS=""
 TARGET_FLAGS=()
 COMBINED_FLAG=""
+LOCAL_MODE=false
+
+# Parse optional parameter: --local
+if [[ "${1:-}" == "--local" ]]; then
+    LOCAL_MODE=true
+    log "DocC generation mode: local testing (no static hosting)"
+else
+    log "DocC generation mode: GitHub Pages"
+fi
 
 # Detect repo name for hosting-base-path
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -20,9 +29,9 @@ fi
 
 # Load targets from .doccTargetList if present
 load_from_config() {
-    TARGETS=$(grep -v '^\s*$' "$CONFIG_FILE" || true)
+    TARGETS=$(grep -v '^\s*$' "$TARGETS_FILE" || true)
     if [ -z "$TARGETS" ]; then
-        fatal "$CONFIG_FILE exists but contains no valid targets."
+        fatal "$TARGETS_FILE exists but contains no valid targets."
     fi
     for TARGET in $TARGETS; do
         TARGET_FLAGS+=( --target "$TARGET" )
@@ -47,8 +56,8 @@ auto_detect_targets() {
 }
 
 # Select target source
-if [ -f "$CONFIG_FILE" ]; then
-    log "Using targets from $CONFIG_FILE"
+if [ -f "$TARGETS_FILE" ]; then
+    log "Using targets from $TARGETS_FILE"
     load_from_config
 else
     log "Auto-detecting Swift targets"
@@ -76,10 +85,19 @@ mkdir -p "$OUTPUT_DIR"
 
 # Generate documentation
 echo
-swift package --allow-writing-to-directory "$OUTPUT_DIR" \
-    generate-documentation \
-    $COMBINED_FLAG \
-    "${TARGET_FLAGS[@]}" \
-    --output-path "$OUTPUT_DIR" \
-    --transform-for-static-hosting \
-    ${REPO_NAME:+--hosting-base-path "$REPO_NAME"}
+if $LOCAL_MODE; then
+    swift package --allow-writing-to-directory "$OUTPUT_DIR" \
+        generate-documentation \
+        $COMBINED_FLAG \
+        "${TARGET_FLAGS[@]}" \
+        --output-path "$OUTPUT_DIR"
+
+else
+    swift package --allow-writing-to-directory "$OUTPUT_DIR" \
+        generate-documentation \
+        $COMBINED_FLAG \
+        "${TARGET_FLAGS[@]}" \
+        --output-path "$OUTPUT_DIR" \
+        --transform-for-static-hosting \
+        ${REPO_NAME:+--hosting-base-path "$REPO_NAME"}
+fi

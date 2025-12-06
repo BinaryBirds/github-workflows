@@ -8,11 +8,16 @@ breakage:
 symlinks:
 	curl -s $(baseUrl)/check-broken-symlinks.sh | bash
 
-docc-create:
+## params: --local: generate for local testing
+docc-generate:
 	curl -s $(baseUrl)/generate-docc.sh | bash
 
 docc-warnings:
 	curl -s $(baseUrl)/check-docc-warnings.sh | bash
+
+## params: -n: name, -p: port
+run-docc:
+	curl -s $(baseUrl)/run-docc-docker.sh | bash
 
 headers:
 	curl -s $(baseUrl)/check-swift-headers.sh | bash

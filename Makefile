@@ -9,7 +9,7 @@ symlinks:
 	curl -s $(baseUrl)/check-broken-symlinks.sh | bash
 
 docc-create:
-	curl -s $(baseUrl)/generate-docs.sh | bash
+	curl -s $(baseUrl)/generate-docc.sh | bash
 
 docc-warnings:
 	curl -s $(baseUrl)/check-docc-warnings.sh | bash

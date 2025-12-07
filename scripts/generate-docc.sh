@@ -11,6 +11,7 @@ TARGETS=""
 TARGET_FLAGS=()
 COMBINED_FLAG=""
 LOCAL_MODE=false
+REPO_NAME=""
 
 # Argument parsing
 while [[ $# -gt 0 ]]; do

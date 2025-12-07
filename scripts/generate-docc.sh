@@ -12,23 +12,44 @@ TARGET_FLAGS=()
 COMBINED_FLAG=""
 LOCAL_MODE=false
 
-# Parse optional parameter: --local
-if [[ "${1:-}" == "--local" ]]; then
-    LOCAL_MODE=true
+# Argument parsing
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --local)
+            LOCAL_MODE=true
+            shift
+            ;;
+        --name)
+            if [[ -n "${2:-}" ]]; then
+                REPO_NAME="$2"
+                shift 2
+            else
+                error "--name flag requires a value but none was provided"
+                exit 1
+            fi
+            ;;
+        *)
+            error "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Determine repo name
+if [[ -z "$REPO_NAME" ]]; then
+    if git rev-parse --show-toplevel >/dev/null 2>&1; then
+        REPO_ROOT="$(git rev-parse --show-toplevel)"
+        REPO_NAME="$(basename "$REPO_ROOT")"
+    fi
+fi
+
+if $LOCAL_MODE; then
     log "DocC generation mode: local testing (no static hosting)"
 else
     log "DocC generation mode: GitHub Pages"
 fi
 
-# If repo name argument is passed use it, otherwise detect via git
-if [ -n "${1:-}" ]; then
-    REPO_NAME="$1"
-else
-    # fallback to git detection
-    REPO_ROOT="$(git rev-parse --show-toplevel)"
-    REPO_NAME="$(basename "$REPO_ROOT")"
-fi
-log "Using repo name: $REPO_NAME"
+log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
 
 # Load targets from .doccTargetList if present
 load_from_config() {

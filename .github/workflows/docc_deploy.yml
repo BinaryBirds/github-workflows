@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Swift ${{ inputs.docc_swift_version }}
-        uses: swift-actions/setup-swift@v1
+        uses: swift-actions/setup-swift@v3
         with:
           swift-version: ${{ inputs.docc_swift_version }}
 

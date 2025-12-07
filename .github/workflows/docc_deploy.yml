@@ -31,10 +31,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install jq
+      - name: Install curl + jq
         run: |
           apt-get update -y
-          apt-get install -y jq
+          apt-get install -y curl jq
 
       - name: Generate DocC documentation
         run: |

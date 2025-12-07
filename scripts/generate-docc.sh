@@ -83,6 +83,8 @@ fi
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
+log "repo name: $REPO_NAME"
+
 # Generate documentation
 echo
 if $LOCAL_MODE; then

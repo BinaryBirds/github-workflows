@@ -38,7 +38,7 @@ jobs:
 
       - name: Generate DocC documentation
         run: |
-          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc/scripts/generate-docc.sh | bash
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc/scripts/generate-docc.sh | bash -s ${{ github.event.repository.name }}
 
       - name: Upload DocC artifact
         uses: actions/upload-pages-artifact@v3

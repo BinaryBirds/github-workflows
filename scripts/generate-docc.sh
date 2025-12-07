@@ -20,12 +20,15 @@ else
     log "DocC generation mode: GitHub Pages"
 fi
 
-# Detect repo name for hosting-base-path
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
+# If repo name argument is passed use it, otherwise detect via git
+if [ -n "${1:-}" ]; then
+    REPO_NAME="$1"
 else
-    REPO_NAME=""
+    # fallback to git detection
+    REPO_ROOT="$(git rev-parse --show-toplevel)"
+    REPO_NAME="$(basename "$REPO_ROOT")"
 fi
+log "Using repo name: $REPO_NAME"
 
 # Load targets from .doccTargetList if present
 load_from_config() {
@@ -82,8 +85,6 @@ fi
 
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
-
-log "repo name: $REPO_NAME"
 
 # Generate documentation
 echo

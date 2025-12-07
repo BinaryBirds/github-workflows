@@ -22,16 +22,14 @@ jobs:
 
   generate-docc:
     name: Generate DocC documentation
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+
+    container:
+      image: swift:${{ inputs.docc_swift_version }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install Swift ${{ inputs.docc_swift_version }}
-        uses: swift-actions/setup-swift@v3
-        with:
-          swift-version: ${{ inputs.docc_swift_version }}
 
       - name: Install jq
         run: |
@@ -40,7 +38,7 @@ jobs:
 
       - name: Generate DocC documentation
         run: |
-          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/generate-docc.sh | bash
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc/scripts/generate-docc.sh | bash
 
       - name: Upload DocC artifact
         uses: actions/upload-pages-artifact@v3

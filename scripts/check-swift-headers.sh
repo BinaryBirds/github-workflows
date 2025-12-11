@@ -170,6 +170,9 @@ else
   log "No exclusion file found, using default exclusions"
   EXCLUDE_PATTERNS+=(":(exclude).*")
   EXCLUDE_PATTERNS+=(":(exclude)*.txt")
+  EXCLUDE_PATTERNS+=(":(exclude)*.png")
+  EXCLUDE_PATTERNS+=(":(exclude)*.jpeg")
+  EXCLUDE_PATTERNS+=(":(exclude)*.jpg")
   EXCLUDE_PATTERNS+=(":(exclude)*.sh")
   EXCLUDE_PATTERNS+=(":(exclude)*.html")
   EXCLUDE_PATTERNS+=(":(exclude)*.yaml")

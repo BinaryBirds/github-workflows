@@ -7,6 +7,10 @@ on:
         type: boolean
         description: "Boolean to enable the local swift dependencies check job. Defaults to false."
         default: false
+      headers_check_enabled:
+        type: boolean
+        description: "Checks Swift source file headers to ensure they follow the correct format. Defaults to false."
+        default: false
       run_tests_with_cache_enabled:
         type: boolean
         description: "Boolean to enable run tests with .build cache."
@@ -36,6 +40,21 @@ jobs:
           persist-credentials: false
       - name: Run local swift dependencies check
         run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash
+
+
+  swift_headers_check:
+    name: Checks Swift source file headers
+    if: ${{ inputs.headers_check_enabled }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run swift headers check
+        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-headers.sh | bash
+
 
   cache-and-test:
     name: Run tests with cache

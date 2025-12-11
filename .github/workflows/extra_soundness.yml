@@ -18,7 +18,7 @@ on:
       run_tests_swift_versions:
         type: string
         description: "List of Swift versions to test with."
-        default: '["6.0", "6.1"]'
+        default: '["6.1", "6.2"]'
     secrets:
       SSH_PRIVATE_KEY:
         required: false

@@ -33,7 +33,7 @@ jobs:
       run_tests_swift_versions: '["6.0","6.1"]'
 ```
 
-### 2\. DocC Deploy Workflow (`docc_deploy.yml`)
+### 2. DocC Deploy Workflow (`docc_deploy.yml`)
 
 This workflow handles the generation and deployment of DocC documentation:
 

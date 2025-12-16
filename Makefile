@@ -12,6 +12,9 @@ symlinks:
 docc-generate:
 	curl -s $(baseUrl)/generate-docc.sh | bash
 
+docc-local:
+	curl -s $(baseUrl)/generate-docc.sh | bash -s -- --local
+
 docc-warnings:
 	curl -s $(baseUrl)/check-docc-warnings.sh | bash
 
@@ -60,4 +63,4 @@ lint:
 format:
 	curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix 
 
-check: symlinks language deps lint
+check: symlinks language deps lint docc-warnings headers

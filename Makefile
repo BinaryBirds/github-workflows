@@ -8,8 +8,19 @@ breakage:
 symlinks:
 	curl -s $(baseUrl)/check-broken-symlinks.sh | bash
 
+## params: --local: generate for local testing
+docc-generate:
+	curl -s $(baseUrl)/generate-docc.sh | bash
+
+docc-local:
+	curl -s $(baseUrl)/generate-docc.sh | bash -s -- --local
+
 docc-warnings:
 	curl -s $(baseUrl)/check-docc-warnings.sh | bash
+
+## params: -n: name, -p: port
+run-docc:
+	curl -s $(baseUrl)/run-docc-docker.sh | bash
 
 headers:
 	curl -s $(baseUrl)/check-swift-headers.sh | bash
@@ -52,4 +63,4 @@ lint:
 format:
 	curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix 
 
-check: symlinks language deps lint
+check: symlinks language deps lint docc-warnings headers

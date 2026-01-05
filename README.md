@@ -1,111 +1,411 @@
 # GitHub Actions Workflows
+
 This repository contains a reusable workflow and various bash scripts designed to streamline tasks in a Swift project.
 
 The workflow utilizes the official [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) to perform checks and run Swift tests on the repository.
 
 ## Install
+
 No installation required.
 
-## How to use the workflow?
-To use the workflow in a repository, simply copy the **sample_actions.yml** file into the **.github/workflows** directory within the repository. For more configuration options, refer to the official [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) repository.
+## Workflows
 
-## How to use the script(s)?
-A **Makefile** is included in this repository to simplify script execution. Copy it to the repository’s root directory where the scripts will be used.
+This section details the reusable workflows provided by the repository.
 
-## Available scripts
+### 1. Extra Soundness Workflow (`extra_soundness.yml`)
+
+This workflow provides configurable, robust checks and testing:
+
+* **Optional Local Swift Dependency Checks**: Checks for accidental `.package(path:)` usage.
+* **Optional Swift Test Execution**: Runs tests using **`.build` caching** for efficiency.
+* **Multi-Version Support**: Tests across multiple Swift versions, configurable via input (defaulting to `["6.0", "6.1"]`).
+* **SSH Support**: Includes steps to set up **SSH credentials** (via the `SSH_PRIVATE_KEY` secret) for projects relying on private Git dependencies.
+
+**Example Usage (Caller Repository):**
+
+```yaml
+jobs:
+  soundness:
+    uses: BinaryBirds/github-workflows/.github/workflows/extra_soundness.yml@main
+    with:
+      local_swift_dependencies_check_enabled: true
+      run_tests_with_cache_enabled: true
+      run_tests_swift_versions: '["6.0","6.1"]'
+```
+
+### 2. DocC Deploy Workflow (`docc_deploy.yml`)
+
+This workflow handles the generation and deployment of DocC documentation:
+
+* **Builds DocC Documentation**: Uses a Swift Docker image (default version "6.2") to build the documentation.
+* **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
+* **Note on Stability**: This workflow is currently configured to fetch its core script (`generate-docc.sh`) from the **`feature/docc`** branch.
+
+**Example Usage (Caller Repository):**
+
+```yaml
+jobs:
+  create-docc-and-deploy:
+    uses: BinaryBirds/github-workflows/.github/workflows/docc_deploy.yml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      docc_swift_version: "6.1"
+```
+
+-----
+
+## Makefile Usage
+
+A **Makefile** is included to simplify the execution of all automation tasks by converting long `curl | bash` commands into short, memorable `make` targets.
+
+### Combined Makefile Commands
+
+The `check` target is a composite command that executes several core quality checks sequentially.
+
+* `check`: Executes `make symlinks` -\> `make language` -\> `make deps` -\> `make lint`.
+
+### Benefits
+
+* **Standardizes script usage** and ensures consistent options.
+* **Shortens long commands** into memorable tasks.
+* Supports composite commands and reduces human error.
+
+-----
+
+## Available Scripts Documentation
+
+The `Makefile` uses the variable `baseUrl` which points to the source of all scripts:
+`https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts`
 
 ### check-api-breakage.sh
-This script runs a check for any breaking changes in the API. It uses the swift package diagnose-api-breaking-changes command to analyze the current API against the last tagged version and reports any breaking changes found.
 
-Usage: `make breakage`
+**Purpose**: Detects API-breaking changes compared to the latest Git tag using the `swift package diagnose-api-breaking-changes` command.
+
+**Makefile Command**:
+
+```sh
+make breakage
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-api-breakage.sh | bash
+```
+
+-----
 
 ### check-broken-symlinks.sh
-This script runs a search to find and report broken symbolic links within the repository. It iterates over all files tracked by Git and checks if their symlink targets exist.
 
-Usage: `make symlinks`
+**Purpose**: Runs a search to find and report **broken symbolic links** within the repository.
+
+**Makefile Command**:
+
+```sh
+make symlinks
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-broken-symlinks.sh | bash
+```
+
+-----
 
 ### check-docc-warnings.sh
-This script executes Swift Package Manager’s documentation generation with the **--warnings-as-errors** flag to ensure that any documentation warnings are treated as errors, maintaining high-quality documentation standards.
 
-Usage: `make docc-warnings`
+**Purpose**: Executes DocC documentation analysis with the **`--warnings-as-errors`** flag to enforce strict quality standards.
 
-### check-swift-headers.sh
-This script checks and optionally fixes Swift source file headers to ensure they follow a consistent format.
-Optional parameters can used, these extra parameters needs to be added in the **Makefile**:
-- `--fix`: Automatically fix all headers
-- `--author`: Set a custom author name (default is `"Binary Birds"`)
+**Makefile Command**:
 
-Fix all headers:
-`fix-headers:
-	curl -s $(baseUrl)/check-swift-headers.sh | bash -s -- --fix
-`
-Fix all headers with custom author:
-`fix-headers:
-	curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- --fix --author John
-`
-Usage: `make headers`
+```sh
+make docc-warnings
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-docc-warnings.sh | bash
+```
+
+-----
 
 ### check-local-swift-dependencies.sh
-This script checks for local Swift package dependencies in the repository. It scans **Package.swift** files for local dependencies defined using **.package(path:)** and reports any occurrences.
 
-Usage: `make deps`
-	
+**Purpose**: Checks for accidental local Swift package dependencies by scanning for **`.package(path:)`** usage in `Package.swift` files.
+
+**Makefile Command**:
+
+```sh
+make deps
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-local-swift-dependencies.sh | bash
+```
+
+-----
+
 ### check-openapi-security.sh
-This script runs a security analysis on the OpenAPI specification using OWASP ZAP. It runs the zap-api-scan.py script inside a Docker container to check for security vulnerabilities in the OpenAPI definition.
 
-Usage: `make openapi-security`
+**Purpose**: Runs a **security analysis** on the OpenAPI specification using **OWASP ZAP** inside a Docker container.
+
+**Makefile Command**:
+
+```sh
+make openapi-security
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-openapi-security.sh | bash
+```
+
+-----
 
 ### check-openapi-validation.sh
-This script validates the OpenAPI specification for compliance with the OpenAPI standard. It uses the openapi-spec-validator tool inside a Docker container to perform the validation.
 
-Usage: `make openapi-validation`
+**Purpose**: Validates the `openapi.yaml` file for compliance with the OpenAPI standard using the `openapi-spec-validator` tool in a Docker container.
+
+**Makefile Command**:
+
+```sh
+make openapi-validation
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-openapi-validation.sh | bash
+```
+
+-----
+
+### check-swift-headers.sh
+
+**Purpose**: Checks and optionally fixes Swift source file headers to ensure they follow a consistent 5-line format.
+**Configuration**: Respects the **`.swiftheaderignore`** file, which lists file paths, directories, or glob patterns to exclude from header validation.
+
+**Parameters**:
+
+* `--fix`: Automatically inserts or updates headers in-place.
+* `--author <name>`: Overrides the default author name (`"Binary Birds"`).
+
+**Makefile Command (Check)**:
+
+```sh
+make headers
+```
+
+**Raw curl Command (Check)**:
+
+```sh
+curl -s $(baseUrl)/check-swift-headers.sh | bash
+```
+
+**Makefile Command (Fix)**:
+
+```sh
+make fix-headers
+```
+
+**Raw curl Command (Fix with Author Example)**:
+
+```sh
+curl -s $(baseUrl)/check-swift-headers.sh | bash -s -- --fix --author "John Doe"
+```
+
+-----
 
 ### check-unacceptable-language.sh
-This script searches the codebase for unacceptable language patterns. It uses a predefined list of terms and searches the codebase for any matches, reporting them if found. An optional **.unacceptablelanguageignore** file can be added to the repository’s root, allowing certain files to be ignored during the search.
 
-Usage: `make language`
+**Purpose**: Searches the codebase for unacceptable language patterns (e.g., `master`, `blacklist`).
+**Configuration**: Respects the **`.unacceptablelanguageignore`** file, which allows you to ignore specific files or directories when scanning for unacceptable language.
+
+**Makefile Command**:
+
+```sh
+make language
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/check-unacceptable-language.sh | bash
+```
+
+-----
 
 ### generate-contributors-list.sh
-This script generates a list of contributors for the repository. It uses the git shortlog command to gather commit information and formats it into a CONTRIBUTORS.txt file.
 
-Usage: `make contributors`
+**Purpose**: Generates a list of contributors for the repository into a **`CONTRIBUTORS.txt`** file from Git commit history.
+
+**Makefile Command**:
+
+```sh
+make contributors
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/generate-contributors-list.sh | bash
+```
+
+-----
+
+### generate-docc.sh
+
+**Purpose**: Generates DocC documentation to the `docs/` directory.
+**Configuration**: Looks for the **`.doccTargetList`** file, which, if present, explicitly defines the Swift targets for documentation generation.
+
+**Parameters**:
+
+* `--local`: Enables local mode (no hosting transforms).
+* `--name <value>`: Sets the hosting base path for GitHub Pages.
+
+**Makefile Command**:
+
+```sh
+make docc-generate
+```
+
+**Raw curl Command (GitHub Pages Example)**:
+
+```sh
+curl -s $(baseUrl)/generate-docc.sh | bash -s -- --name MyRepoName
+```
+
+-----
+
+### install-swift-format.sh
+
+**Purpose**: Installs the **Swift Format** tool binary.
+
+**Makefile Command**:
+
+```sh
+make install-format
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/install-swift-format.sh | bash
+```
+
+-----
 
 ### install-swift-openapi-generator.sh
-This script installs the Swift OpenAPI generator tool, the version can be optionally defined using the `-v` parameter. If no version is specified as a parameter, the latest version will be installed.
 
-Example to add the extra parameter in the **Makefile**:
-`install-openapi:
-	curl -s $(baseUrl)/install-swift-openapi-generator.sh | bash -s -- -v 1.2.2
-`
+**Purpose**: Installs the **Swift OpenAPI Generator** tool.
 
-Usage: `make install-openapi`
-	
+**Parameters**:
+
+* `-v <X.Y.Z>`: Specifies the version to install.
+
+**Makefile Command**:
+
+```sh
+make install-openapi
+```
+
+**Raw curl Command (Version Example)**:
+
+```sh
+curl -s $(baseUrl)/install-swift-openapi-generator.sh | bash -s -- -v 1.2.2
+```
+
+-----
+
 ### run-clean.sh
-This script cleans up build artifacts and other temporary files from the repository. 
 
-Usage: `make run-clean`
+**Purpose**: Cleans up build artifacts and other temporary files (e.g., `.build`, `.swiftpm`).
+
+**Makefile Command**:
+
+```sh
+make run-clean
+```
+
+**Raw curl Command**:
+
+```sh
+curl -s $(baseUrl)/run-clean.sh | bash
+```
+
+-----
+
+### run-docc-docker.sh
+
+**Purpose**: Serves the generated DocC documentation using a Docker container running Nginx.
+
+**Parameters**:
+
+* `-n <name>`: Adds a custom identifier for the container.
+* `-p <host:container>`: Adds a custom port mapping (default: `8000:80`).
+
+**Makefile Command**:
+
+```sh
+make run-docc
+```
+
+**Raw curl Command (Custom Port Example)**:
+
+```sh
+curl -s $(baseUrl)/run-docc-docker.sh | bash -s -- -p 8800:80
+```
+
+-----
 
 ### run-openapi-docker.sh
-This script serves the OpenAPI documentation using an Nginx server. This try to run inside a Docker container. Optional parameters can used, these extra parameters needs to be added in the **Makefile**:
 
-- `-n` : add a custom identifier for the container, the default is `openapi-server`
-- `-p` : add a custom port to bind it to the container, the default is `8888:80`
+**Purpose**: Serves the OpenAPI documentation using a Docker container running Nginx.
 
+**Parameters**:
 
-Example to add a different name:
-`run-openapi:
-	curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n new-name
-`
+* `-n <name>`: Adds a custom identifier for the container.
+* `-p <host:container>`: Adds a custom port mapping (default: `8888:80`).
 
-Example to add a different port:
-`run-openapi:
-	curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -p 8800:80
-`
+**Makefile Command**:
 
-Usage: `make run-openapi`
+```sh
+make run-openapi
+```
+
+**Raw curl Command (Custom Name Example)**:
+
+```sh
+curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n new-name
+```
+
+-----
 
 ### run-swift-format.sh
-This script checks/formats Swift code using the swift-format tool. It runs the tool on all Swift files in the repository, optionally fixing issues if the --fix argument is provided. 
-The script attempts to read the **.swift-format** configuration file for format rules and ignores files listed in **.swiftformatignore**, if present. If any file is missing, it will download it to the repository, which can then be customized.
 
-Usage: `make lint` for run lint or `make format` for run format
+**Purpose**: Checks/formats Swift code using the `swift-format` tool. If configuration is missing, it downloads defaults.
+**Configuration**: Uses the **`.swift-format`** file for format rules and the **`.swiftformatignore`** file to exclude files/directories from the process.
+
+**Parameters**:
+
+* `--fix`: Automatically applies formatting instead of checking.
+
+**Makefile Command (Check)**:
+
+```sh
+make lint
+```
+
+**Raw curl Command (Fix)**:
+
+```sh
+curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix
+```

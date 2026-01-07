@@ -39,7 +39,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run local swift dependencies check
-        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc/scripts/check-local-swift-dependencies.sh | bash
+        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash
 
 
   swift_headers_check:
@@ -53,7 +53,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run swift headers check
-        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc/scripts/check-swift-headers.sh | bash
+        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-headers.sh | bash
 
 
   cache-and-test:

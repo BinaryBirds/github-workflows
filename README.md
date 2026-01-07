@@ -39,7 +39,6 @@ This workflow handles the generation and deployment of DocC documentation:
 
 * **Builds DocC Documentation**: Uses a Swift Docker image (default version "6.2") to build the documentation.
 * **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
-* **Note on Stability**: This workflow is currently configured to fetch its core script (`generate-docc.sh`) from the **`feature/docc`** branch.
 
 **Example Usage (Caller Repository):**
 

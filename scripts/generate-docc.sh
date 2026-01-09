@@ -12,7 +12,6 @@ TARGET_FLAGS=()
 COMBINED_FLAG=""
 LOCAL_MODE=false
 REPO_NAME=""
-SWIFTPM_PACKAGE_PATH=""
 
 # ------------------------------------------------------------
 # Argument parsing
@@ -53,7 +52,7 @@ ensure_clean_git() {
 }
 
 # ------------------------------------------------------------
-# Ensure swift-docc-plugin (only if missing)
+# Ensure swift-docc-plugin (upstream logic)
 # ------------------------------------------------------------
 ensure_docc_plugin() {
     local PACKAGE_FILE="Package.swift"
@@ -69,19 +68,9 @@ ensure_docc_plugin() {
 
     log "swift-docc-plugin missing — injecting temporarily (from 1.4.0)"
 
-    TMP_PACKAGE_DIR="$(mktemp -d)"
-    TMP_PACKAGE_FILE="$TMP_PACKAGE_DIR/Package.swift"
-
-    cp "$PACKAGE_FILE" "$TMP_PACKAGE_FILE"
-
     perl -0777 -i -pe '
         s|(dependencies:\s*\[)|$1\n        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),|s
-    ' "$TMP_PACKAGE_FILE"
-
-    SWIFTPM_PACKAGE_PATH="$TMP_PACKAGE_DIR"
-    export SWIFTPM_PACKAGE_PATH
-
-    trap 'rm -rf "$TMP_PACKAGE_DIR"' EXIT
+    ' "$PACKAGE_FILE"
 }
 
 # ------------------------------------------------------------
@@ -136,16 +125,14 @@ load_from_config() {
 }
 
 # ------------------------------------------------------------
-# Auto-detect Swift targets
+# Auto-detect Swift targets (restored)
 # ------------------------------------------------------------
 auto_detect_targets() {
     if ! command -v jq >/dev/null 2>&1; then
         fatal "jq is required (install with: brew install jq)"
     fi
 
-    TARGETS=$(swift package \
-        ${SWIFTPM_PACKAGE_PATH:+--package-path "$SWIFTPM_PACKAGE_PATH"} \
-        dump-package \
+    TARGETS=$(swift package dump-package \
         | jq -r '.targets[]
             | select(.type == "regular" or .type == "executable")
             | .name')
@@ -198,7 +185,6 @@ echo
 
 if $LOCAL_MODE; then
     swift package \
-        ${SWIFTPM_PACKAGE_PATH:+--package-path "$SWIFTPM_PACKAGE_PATH"} \
         --allow-writing-to-directory "$OUTPUT_DIR" \
         generate-documentation \
         $COMBINED_FLAG \
@@ -207,7 +193,6 @@ if $LOCAL_MODE; then
         || DOCS_EXIT_CODE=$?
 else
     swift package \
-        ${SWIFTPM_PACKAGE_PATH:+--package-path "$SWIFTPM_PACKAGE_PATH"} \
         --allow-writing-to-directory "$OUTPUT_DIR" \
         generate-documentation \
         $COMBINED_FLAG \

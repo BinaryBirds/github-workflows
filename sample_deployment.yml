@@ -1,4 +1,4 @@
-name: Create DocC and Deploy it
+name: Deployment
 
 on:
   push:

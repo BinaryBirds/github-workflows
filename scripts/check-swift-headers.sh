@@ -217,7 +217,7 @@ else
     ":(exclude)Package.resolved"
     ":(exclude)Makefile"
     ":(exclude)LICENSE"
-    ":(exclude)Package.swift"
+    ":(exclude)Package*.swift"
     ":(exclude)Docker/**"
   )
 fi

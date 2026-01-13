@@ -109,7 +109,6 @@ is_header_present() {
 
 # Header validation / fixing
 #
-# - Skips Package.swift
 # - Validates each header line individually
 # - In fix mode:
 #     - Updates incorrect headers
@@ -118,8 +117,6 @@ check_or_fix_header() {
   local file="$1"
   local filename
   filename=$(basename "$file")
-
-  [ "$filename" = "Package.swift" ] && return 0
 
   local line1 line2 line3 line4 line5
   line1=$(sed -n '1p' "$file")

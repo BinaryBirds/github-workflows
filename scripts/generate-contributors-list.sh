@@ -1,26 +1,64 @@
 #!/usr/bin/env bash
+# Contributors List Generator
+#
+# This script generates a CONTRIBUTORS.txt file based on the git commit history.
+# It uses `git shortlog` to collect contributor names and email addresses and
+# formats them into a human-readable list.
+#
+# The generated file is intended to be:
+# - Deterministic
+# - Automatically maintained
+# - Not edited by hand
+#
+# Intended usage:
+# - CI or release tooling to keep CONTRIBUTORS.txt up to date
+# - Local usage before publishing or tagging a release
+
 set -euo pipefail
 
-log() { printf -- "** %s\n" "$*" >&2; }
+# Logging helpers
+# All output is written to stderr for consistent CI and local logs
+log()   { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
+# Resolve the repository root
+# Ensures the CONTRIBUTORS.txt file is always written at the top level
 REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
+
+# Collect contributors from git history
+#
+# - `git shortlog -es` groups commits by author
+# - Output format: "<count>\tName <email>"
 contributors=$(git shortlog -es 2>/dev/null)
 
+# If git shortlog fails, the repository is likely invalid
 if [ $? -ne 0 ]; then
     fatal "Error: Unable to run 'git shortlog'. Are you in a valid git repository?"
 fi
 
+# Handle the case where no contributors are found
+# This can happen in an empty or newly initialized repository
 if [ -z "$contributors" ]; then
     log "No contributors found."
     exit 0
 else
+    # Strip commit counts and format as a Markdown list
     contributors=$(echo "$contributors" | awk '{$1=""; print "- " $0}')
 fi
 
-log "Creating file..."
+log "Creating CONTRIBUTORS.txt file..."
 
+# Write the CONTRIBUTORS.txt file
+#
+# The file includes:
+# - A header
+# - A bullet list of contributors
+# - Instructions on how to update the list correctly
+#
+# The .mailmap file should be used to:
+# - Fix misspelled names
+# - Merge duplicate identities
 cat > "$REPO_ROOT/CONTRIBUTORS.txt" <<- EOF
 	### Contributors
 	$contributors
@@ -30,4 +68,5 @@ cat > "$REPO_ROOT/CONTRIBUTORS.txt" <<- EOF
 	If a name is misspelled or appearing multiple times: add an entry in \`./.mailmap\`.
 EOF
 
+# Success message
 log "✅ CONTRIBUTORS.txt created with no errors."

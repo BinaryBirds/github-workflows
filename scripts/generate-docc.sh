@@ -1,21 +1,40 @@
 #!/usr/bin/env bash
+# DocC Documentation Generation Script
+#
+# This script generates DocC documentation for a Swift package.
+#
+# Features:
+# - Supports explicit target selection via .doccTargetList
+# - Falls back to auto-detecting documentable Swift targets
+# - Injects swift-docc-plugin temporarily if missing
+# - Supports local preview mode and GitHub Pages static hosting
+# - Enforces a clean git working tree for local runs
+#
+# Intended usage:
+# - CI: generate documentation for publishing or validation
+# - Local: preview documentation output safely
+
 set -euo pipefail
 
+# Logging helpers
+# All output is written to stderr for consistent CI and local logs
 log()   { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
-OUTPUT_DIR="./docs"
-TARGETS_FILE=".doccTargetList"
-TARGETS=""
-TARGET_FLAGS=()
-COMBINED_FLAG=""
-LOCAL_MODE=false
-REPO_NAME=""
+# Configuration / state
+OUTPUT_DIR="./docs"            # Output directory for generated documentation
+TARGETS_FILE=".doccTargetList" # Optional file listing explicit DocC targets
+TARGETS=""                     # Raw newline-separated target names
+TARGET_FLAGS=()                # --target flags passed to SwiftPM
+COMBINED_FLAG=""               # Experimental combined documentation flag
+LOCAL_MODE=false               # Local preview vs static hosting mode
+REPO_NAME=""                   # Hosting base path (for GitHub Pages)
 
-# ------------------------------------------------------------
 # Argument parsing
-# ------------------------------------------------------------
+#
+# --local        Generate docs for local preview (no static hosting transform)
+# --name NAME    Override repository name used for hosting base path
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --local)
@@ -36,9 +55,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ------------------------------------------------------------
-# Git safety (local only)
-# ------------------------------------------------------------
+# Git safety (local runs only)
+#
+# Prevents accidental loss of local changes when the script temporarily
+# modifies Package.swift.
 ensure_clean_git() {
     if [ -n "${GITHUB_ACTIONS:-}" ]; then
         return 0
@@ -51,9 +71,11 @@ ensure_clean_git() {
     fi
 }
 
-# ------------------------------------------------------------
-# Ensure swift-docc-plugin (upstream logic)
-# ------------------------------------------------------------
+# Ensure swift-docc-plugin is available
+#
+# DocC generation requires the swift-docc-plugin dependency.
+# If missing, it is injected temporarily into Package.swift.
+# This mirrors Swift’s upstream documentation workflows.
 ensure_docc_plugin() {
     local PACKAGE_FILE="Package.swift"
 
@@ -73,9 +95,9 @@ ensure_docc_plugin() {
     ' "$PACKAGE_FILE"
 }
 
-# ------------------------------------------------------------
-# Reset git after docs (local only)
-# ------------------------------------------------------------
+# Restore git state after documentation generation (local only)
+#
+# Ensures the repository is returned to a clean state after execution.
 reset_git_after_docs() {
     if [ -n "${GITHUB_ACTIONS:-}" ]; then
         return 0
@@ -87,9 +109,10 @@ reset_git_after_docs() {
     fi
 }
 
-# ------------------------------------------------------------
-# Repo name detection
-# ------------------------------------------------------------
+# Determine repository name
+#
+# Used as the hosting base path when generating documentation for
+# static hosting (e.g. GitHub Pages).
 if [[ -z "$REPO_NAME" ]]; then
     if git rev-parse --show-toplevel >/dev/null 2>&1; then
         REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -97,6 +120,7 @@ if [[ -z "$REPO_NAME" ]]; then
     fi
 fi
 
+# Log generation mode
 if $LOCAL_MODE; then
     log "DocC generation mode: local testing (no static hosting)"
 else
@@ -105,28 +129,28 @@ fi
 
 log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
 
-# ------------------------------------------------------------
 # Pre-flight checks
-# ------------------------------------------------------------
 ensure_clean_git
 ensure_docc_plugin
 
-# ------------------------------------------------------------
-# Load targets from .doccTargetList if present
-# ------------------------------------------------------------
+# Load targets from .doccTargetList
+#
+# If present, this file defines the authoritative list of DocC targets.
+# Empty lines are ignored.
 load_from_config() {
     TARGETS=$(grep -v '^\s*$' "$TARGETS_FILE" || true)
     if [ -z "$TARGETS" ]; then
         fatal "$TARGETS_FILE exists but contains no valid targets."
     fi
+
     for TARGET in $TARGETS; do
         TARGET_FLAGS+=( --target "$TARGET" )
     done
 }
 
-# ------------------------------------------------------------
-# Auto-detect Swift targets (restored)
-# ------------------------------------------------------------
+# Auto-detect documentable Swift targets
+#
+# Uses SwiftPM package introspection to find regular and executable targets.
 auto_detect_targets() {
     if ! command -v jq >/dev/null 2>&1; then
         fatal "jq is required (install with: brew install jq)"
@@ -146,9 +170,9 @@ auto_detect_targets() {
     done
 }
 
-# ------------------------------------------------------------
 # Target selection
-# ------------------------------------------------------------
+#
+# Prefer .doccTargetList if present, otherwise fall back to auto-detection.
 if [ -f "$TARGETS_FILE" ]; then
     log "Using targets from $TARGETS_FILE"
     load_from_config
@@ -163,9 +187,9 @@ log "Targets detected:"
 printf "%s\n" "$TARGETS"
 log "Target count: $TARGET_COUNT"
 
-# ------------------------------------------------------------
-# Combined docs flag
-# ------------------------------------------------------------
+# Combined documentation flag
+#
+# Enables experimental combined documentation when multiple targets exist.
 if [ "$TARGET_COUNT" -gt 1 ]; then
     COMBINED_FLAG="--enable-experimental-combined-documentation"
     log "Combined documentation: enabled"
@@ -174,9 +198,10 @@ else
     log "Combined documentation: disabled"
 fi
 
-# ------------------------------------------------------------
 # Generate documentation
-# ------------------------------------------------------------
+#
+# Documentation is generated into the OUTPUT_DIR directory.
+# Behavior differs slightly between local preview and static hosting modes.
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
@@ -203,9 +228,11 @@ else
         || DOCS_EXIT_CODE=$?
 fi
 
+# Report failure without hiding the exit code
 if [ "$DOCS_EXIT_CODE" -ne 0 ]; then
     log "WARNING: Documentation generation failed (exit code $DOCS_EXIT_CODE)"
 fi
 
+# Cleanup and exit
 reset_git_after_docs
 exit $DOCS_EXIT_CODE

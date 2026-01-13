@@ -1,29 +1,48 @@
 #!/usr/bin/env bash
+# API Breaking Changes Check
+#
+# This script checks whether the current Swift package introduces
+# API-breaking changes compared to a baseline.
+#
+# Baseline selection logic:
+# - In GitHub Actions PRs: uses the PR base branch
+# - Otherwise: uses the latest git tag
+#
+# If no tags exist at all, the check is skipped with a warning.
+
 set -euo pipefail
 
-log() { printf -- "** %s\n" "$*" >&2; }
+# Logging helpers
+log()   { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
-# Fetch all tags from the remote repository
-git fetch -t
+# Determine baseline reference
+if [ -n "${GITHUB_BASE_REF:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "${GITHUB_SERVER_URL:-}" ]; then
+    log "Running in PR context — using base branch: ${GITHUB_BASE_REF}"
 
-# Get the latest commit hash that has a tag
-REV_LIST=$(git rev-list --tags --max-count=1)
+    git fetch "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+        "${GITHUB_BASE_REF}:pull-base-ref"
 
-# Check if REV_LIST is not empty
-if [ -n "${REV_LIST}" ]; then
-    # Get the latest tag associated with the commit hash
-    LATEST_TAG=$(git describe --tags "${REV_LIST}")
-
-    # Run the Swift package API breakage diagnosis tool and redirect output to a log file
-    swift package diagnose-api-breaking-changes "$LATEST_TAG" cmd > api-breakage-output.log || {
-        NUM=$(cmd api-breakage-output.log|grep -c)
-        log "❌ Found ${NUM} API breakages."
-        cat api-breakages.log
-        exit 0
-    }
-    log "✅ Found no API breakages."
+    BASELINE_REF="pull-base-ref"
 else
-    log "✅ The repository has no tags yet."
+    log "No PR context detected — checking for existing tags"
+
+    git fetch --tags
+
+    if ! git tag | grep -q .; then
+        log "⚠️ No git tags found — skipping API breakage check"
+        exit 0
+    fi
+
+    BASELINE_REF=$(git describe --tags --abbrev=0)
 fi
+
+log "Using baseline: ${BASELINE_REF}"
+
+# Run SwiftPM API breakage diagnosis
+#
+# This command exits non-zero if API-breaking changes are detected.
+swift package diagnose-api-breaking-changes "$BASELINE_REF"
+
+log "✅ No API-breaking changes detected."

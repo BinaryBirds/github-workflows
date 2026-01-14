@@ -42,7 +42,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run local swift dependencies check
-        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc-modify/scripts/check-local-swift-dependencies.sh | bash
+        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-local-swift-dependencies.sh | bash
 
 
   swift_headers_check:
@@ -55,7 +55,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run swift headers check
-        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc-modify/scripts/check-swift-headers.sh | bash
+        run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-headers.sh | bash
 
   docc_warnings_check:
     name: DocC warnings check
@@ -74,7 +74,7 @@ jobs:
           apt-get install -y curl jq
       - name: Run DocC warnings check
         run: |
-          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc-modify/scripts/check-docc-warnings.sh | bash
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-docc-warnings.sh | bash
 
   cache-and-test:
     name: Run tests with cache

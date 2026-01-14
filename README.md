@@ -4,6 +4,11 @@ This repository contains reusable GitHub Actions workflows and a collection of B
 
 The workflows build on the official [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) and extend them with additional soundness, documentation, and tooling checks.
 
+These workflows and scripts are designed to be used within GitHub Actions. A basic working knowledge of GitHub Actions is required to configure workflows, understand job execution, and troubleshoot CI failures.
+
+If you are not familiar with GitHub Actions, refer to the official documentation before using or customizing these workflows:
+[GitHub Actions documentation](https://docs.github.com/en/actions)
+
 ## Install
 
 No installation required.
@@ -53,7 +58,7 @@ jobs:
 
 This workflow handles the generation and deployment of DocC documentation:
 
-* **Builds DocC Documentation**: Uses a Swift Docker image (default version "6.2") to build the documentation.
+* **Builds DocC Documentation**: Uses a Swift 6.2 Docker image to build the documentation.
 * **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
 * **Target Configuration**: Respects `.doccTargetList` if present.
 
@@ -67,8 +72,6 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    with:
-      docc_swift_version: "6.2"
 ```
 
 -----

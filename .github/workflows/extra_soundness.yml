@@ -54,10 +54,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Install jq
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y jq
       - name: Run swift headers check
         run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/docc-modify/scripts/check-swift-headers.sh | bash
 

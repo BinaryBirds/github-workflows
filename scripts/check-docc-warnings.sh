@@ -172,11 +172,11 @@ done
 
 # Final result
 if [ "$TOTAL_RC" -ne 0 ]; then
-    log "WARNING: One or more DocC analysis runs failed"
+    log "❌ One or more DocC analysis runs failed"
     reset_git_after_analysis
     exit "$TOTAL_RC"
 fi
 
-log "All targets passed DocC analysis without warnings."
+log "✅ All targets passed DocC analysis without warnings."
 
 reset_git_after_analysis

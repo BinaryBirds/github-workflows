@@ -5,7 +5,7 @@
 # fails if any warnings or errors are produced.
 #
 # Key characteristics:
-# - Supports an explicit target list via .doccTargetList
+# - Supports an explicit target list via .docctargetlist
 # - Falls back to auto-detecting documentable targets from Package.swift
 # - Ensures swift-docc-plugin is available (injects temporarily if missing)
 # - Enforces a clean git working tree for local runs
@@ -27,7 +27,7 @@ error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() { error "$@"; exit 1; }
 
 # Configuration / state
-TARGETS_FILE=".doccTargetList"   # Optional file listing explicit DocC targets
+TARGETS_FILE=".docctargetlist"   # Optional file listing explicit DocC targets
 TARGETS=""                       # Raw newline-separated target names
 TARGET_LIST=()                   # Target names as an array
 
@@ -94,7 +94,7 @@ reset_git_after_analysis() {
 ensure_clean_git
 ensure_docc_plugin
 
-# Load targets from .doccTargetList
+# Load targets from .docctargetlist
 #
 # If the file exists, it is treated as the authoritative list of DocC targets.
 # Empty lines are ignored.

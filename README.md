@@ -1,12 +1,19 @@
 # GitHub Actions Workflows
 
-This repository contains a reusable workflow and various bash scripts designed to streamline tasks in a Swift project.
+This repository contains reusable GitHub Actions workflows and a collection of Bash scripts designed to streamline quality checks, documentation, formatting, and maintenance tasks in Swift projects.
 
-The workflow utilizes the official [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) to perform checks and run Swift tests on the repository.
+The workflows build on the official [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows) and extend them with additional soundness, documentation, and tooling checks.
+
+These workflows and scripts are designed to be used within GitHub Actions. A basic working knowledge of GitHub Actions is required to configure workflows, understand job execution, and troubleshoot CI failures.
+
+If you are not familiar with GitHub Actions, refer to the official documentation before using or customizing these workflows:
+[GitHub Actions documentation](https://docs.github.com/en/actions)
 
 ## Install
 
 No installation required.
+
+All scripts are executed directly via `curl | bash` or through the provided `Makefile`.
 
 ## Workflows
 
@@ -17,11 +24,23 @@ This section details the reusable workflows provided by the repository.
 This workflow provides configurable, robust checks and testing:
 
 * **Optional Local Swift Dependency Checks**: Checks for accidental `.package(path:)` usage.
+* **Optional Swift Headers Check**: Validates Swift source file headers using a strict 5-line format and respects `.swiftheaderignore`.
+* **Optional DocC Warnings Check**: Runs DocC analysis with `--warnings-as-errors` and fails on warnings.
 * **Optional Swift Test Execution**: Runs tests using **`.build` caching** for efficiency.
 * **Multi-Version Support**: Tests across multiple Swift versions, configurable via input (defaulting to `["6.0", "6.1"]`).
 * **SSH Support**: Includes steps to set up **SSH credentials** (via the `SSH_PRIVATE_KEY` secret) for projects relying on private Git dependencies.
 
-**Example Usage (Caller Repository):**
+#### Workflow Inputs
+
+| Input | Description | Default |
+| ------ | ------------ | --------- |
+| `local_swift_dependencies_check_enabled` | Enables local Swift dependency check | `false` |
+| `headers_check_enabled` | Enables Swift headers validation | `false` |
+| `docc_warnings_check_enabled` | Enables DocC warnings check | `false` |
+| `run_tests_with_cache_enabled` | Enables Swift tests with `.build` cache | `false` |
+| `run_tests_swift_versions` | Swift versions to test | `["6.1","6.2"]` |
+
+#### Example Usage (Caller Repository)
 
 ```yaml
 jobs:
@@ -29,16 +48,19 @@ jobs:
     uses: BinaryBirds/github-workflows/.github/workflows/extra_soundness.yml@main
     with:
       local_swift_dependencies_check_enabled: true
+      headers_check_enabled: true
+      docc_warnings_check_enabled: true
       run_tests_with_cache_enabled: true
-      run_tests_swift_versions: '["6.0","6.1"]'
+      run_tests_swift_versions: '["6.1","6.2"]'
 ```
 
 ### 2. DocC Deploy Workflow (`docc_deploy.yml`)
 
 This workflow handles the generation and deployment of DocC documentation:
 
-* **Builds DocC Documentation**: Uses a Swift Docker image (default version "6.2") to build the documentation.
+* **Builds DocC Documentation**: Uses a Swift 6.2 Docker image to build the documentation.
 * **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
+* **Target Configuration**: Respects `.doccTargetList` if present.
 
 **Example Usage (Caller Repository):**
 
@@ -50,8 +72,6 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    with:
-      docc_swift_version: "6.1"
 ```
 
 -----
@@ -62,14 +82,13 @@ A **Makefile** is included to simplify the execution of all automation tasks by 
 
 ### Combined Makefile Commands
 
-The `check` target is a composite command that executes several core quality checks sequentially.
-
-* `check`: Executes `make symlinks` -\> `make language` -\> `make deps` -\> `make lint`.
+Some Makefile targets group multiple related checks into a single command.
+These combined commands run several scripts in sequence to provide a quick, consistent way to verify overall project quality. For a concrete reference, see the `make check` target in the `Makefile`, which combines several core checks into one command.
 
 ### Benefits
 
-* **Standardizes script usage** and ensures consistent options.
-* **Shortens long commands** into memorable tasks.
+* Standardizes script usage and ensures consistent options.
+* Shortens long commands into memorable tasks.
 * Supports composite commands and reduces human error.
 
 -----
@@ -81,329 +100,479 @@ The `Makefile` uses the variable `baseUrl` which points to the source of all scr
 
 ### check-api-breakage.sh
 
-**Purpose**: Detects API-breaking changes compared to the latest Git tag using the `swift package diagnose-api-breaking-changes` command.
+#### Purpose
 
-**Makefile Command**:
+Detects source- and binary-level API breaking changes in Swift packages to prevent unintended public API regressions.
 
-```sh
-make breakage
-```
+#### Behavior
 
-**Raw curl Command**:
+* Uses `swift package diagnose-api-breaking-changes`
+* Pull requests: compares against the PR base branch
+* Other contexts: compares against the latest Git tag
+* If no tags exist, exits successfully with a warning
+* Fails when breaking changes are detected
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-api-breakage.sh | bash
 ```
 
------
+---
 
 ### check-broken-symlinks.sh
 
-**Purpose**: Runs a search to find and report **broken symbolic links** within the repository.
+#### Purpose
 
-**Makefile Command**:
+Ensures all git-tracked symbolic links resolve to valid targets.
 
-```sh
-make symlinks
-```
+#### Behavior
 
-**Raw curl Command**:
+* Inspects only symbolic links
+* Ignores regular missing files
+* Reports each broken symlink explicitly
+* Exits non-zero if any broken symlink is found
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-broken-symlinks.sh | bash
 ```
 
------
+---
 
 ### check-docc-warnings.sh
 
-**Purpose**: Executes DocC documentation analysis with the **`--warnings-as-errors`** flag to enforce strict quality standards.
+#### Purpose
 
-**Makefile Command**:
+Runs DocC documentation analysis in strict mode, treating warnings as errors.
 
-```sh
-make docc-warnings
-```
+#### Behavior
 
-**Raw curl Command**:
+* Uses `.doccTargetList` when present, otherwise auto-detects targets
+* Temporarily injects `swift-docc-plugin` if missing
+* Requires a clean git working tree locally
+* Restores git state after execution
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+* `.doccTargetList` – explicitly defines documented targets
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-docc-warnings.sh | bash
 ```
 
------
+---
 
 ### check-local-swift-dependencies.sh
 
-**Purpose**: Checks for accidental local Swift package dependencies by scanning for **`.package(path:)`** usage in `Package.swift` files.
+#### Purpose
 
-**Makefile Command**:
+Prevents accidental usage of local Swift package dependencies.
 
-```sh
-make deps
-```
+#### Behavior
 
-**Raw curl Command**:
+* Scans all tracked `Package.swift` files
+* Detects `.package(path:)`
+* Fails immediately on detection
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-local-swift-dependencies.sh | bash
 ```
 
------
+---
 
 ### check-openapi-security.sh
 
-**Purpose**: Runs a **security analysis** on the OpenAPI specification using **OWASP ZAP** inside a Docker container.
+#### Purpose
 
-**Makefile Command**:
+Runs a security scan of an OpenAPI specification using OWASP ZAP.
 
-```sh
-make openapi-security
-```
+#### Behavior
 
-**Raw curl Command**:
+* Executes inside Docker
+* Skips execution if `openapi/` directory does not exist
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-openapi-security.sh | bash
 ```
 
------
+---
 
 ### check-openapi-validation.sh
 
-**Purpose**: Validates the `openapi.yaml` file for compliance with the OpenAPI standard using the `openapi-spec-validator` tool in a Docker container.
+#### Purpose
 
-**Makefile Command**:
+Validates an OpenAPI specification for schema correctness.
 
-```sh
-make openapi-validation
-```
+#### Behavior
 
-**Raw curl Command**:
+* Runs the OpenAPI validator in Docker
+* Skips execution if `openapi/` directory does not exist
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-openapi-validation.sh | bash
 ```
 
------
+---
 
 ### check-swift-headers.sh
 
-**Purpose**: Checks and optionally fixes Swift source file headers to ensure they follow a consistent 5-line format.
-**Configuration**: Respects the **`.swiftheaderignore`** file, which lists file paths, directories, or glob patterns to exclude from header validation.
+#### Purpose
 
-**Parameters**:
+Ensures Swift source files contain a consistent, standardized header.
 
-* `--fix`: Automatically inserts or updates headers in-place.
-* `--author <name>`: Overrides the default author name (`"Binary Birds"`).
+#### Behavior
 
-**Makefile Command (Check)**:
+* Enforces a strict 5-line header format
+* Can optionally insert or update headers in-place
+* Processes only git-tracked Swift files
 
-```sh
-make headers
-```
+#### Parameters
 
-**Raw curl Command (Check)**:
+* `--fix` – insert or update headers automatically
+* `--author <name>` – override default author name
+
+#### Ignore files
+
+* `.swiftheaderignore` – excludes paths from header validation
+
+**Raw curl examples**
+
+_Check only:_
 
 ```sh
 curl -s $(baseUrl)/check-swift-headers.sh | bash
 ```
 
-**Makefile Command (Fix)**:
-
-```sh
-make fix-headers
-```
-
-**Raw curl Command (Fix with Author Example)**:
+_Fix headers with custom author:_
 
 ```sh
 curl -s $(baseUrl)/check-swift-headers.sh | bash -s -- --fix --author "John Doe"
 ```
 
------
+---
 
 ### check-unacceptable-language.sh
 
-**Purpose**: Searches the codebase for unacceptable language patterns (e.g., `master`, `blacklist`).
-**Configuration**: Respects the **`.unacceptablelanguageignore`** file, which allows you to ignore specific files or directories when scanning for unacceptable language.
+#### Purpose
 
-**Makefile Command**:
+Detects discouraged or outdated terminology to promote inclusive language.
 
-```sh
-make language
-```
+#### Behavior
 
-**Raw curl Command**:
+* Case-insensitive, whole-word matching
+* Scans git-tracked files only
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+* `.unacceptablelanguageignore` – excludes paths from scanning
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/check-unacceptable-language.sh | bash
 ```
 
------
+---
 
 ### generate-contributors-list.sh
 
-**Purpose**: Generates a list of contributors for the repository into a **`CONTRIBUTORS.txt`** file from Git commit history.
+#### Purpose
 
-**Makefile Command**:
+Generates a CONTRIBUTORS.txt file from git commit history.
 
-```sh
-make contributors
-```
+#### Behavior
 
-**Raw curl Command**:
+* Uses `git shortlog`
+* Respects `.mailmap`
+* Overwrites the file deterministically
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/generate-contributors-list.sh | bash
 ```
 
------
+---
 
 ### generate-docc.sh
 
-**Purpose**: Generates DocC documentation to the `docs/` directory.
-**Configuration**: Looks for the **`.doccTargetList`** file, which, if present, explicitly defines the Swift targets for documentation generation.
+#### Purpose
 
-**Parameters**:
+Generates DocC documentation into the `docs/` directory.
 
-* `--local`: Enables local mode (no hosting transforms).
-* `--name <value>`: Sets the hosting base path for GitHub Pages.
+#### Behavior
 
-**Makefile Command**:
+* Supports multiple Swift targets
+* Enables combined documentation automatically
+* Can transform output for static hosting
+
+#### Parameters
+
+* `--local` – disable static hosting transform
+* `--name <value>` – set hosting base path
+
+#### Ignore files
+
+* `.doccTargetList` – explicitly defines documented targets
+
+**Raw curl examples**
+
+_GitHub Pages output:_
 
 ```sh
-make docc-generate
+curl -s $(baseUrl)/generate-docc.sh | bash -s -- --name MyRepo
 ```
 
-**Raw curl Command (GitHub Pages Example)**:
+_Local preview:_
 
 ```sh
-curl -s $(baseUrl)/generate-docc.sh | bash -s -- --name MyRepoName
+curl -s $(baseUrl)/generate-docc.sh | bash -s -- --local
 ```
 
------
+---
 
 ### install-swift-format.sh
 
-**Purpose**: Installs the **Swift Format** tool binary.
+#### Purpose
 
-**Makefile Command**:
+Installs the `swift-format` binary.
 
-```sh
-make install-format
-```
+#### Behavior
 
-**Raw curl Command**:
+* Builds from source
+* Installs into `/usr/local/bin`
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/install-swift-format.sh | bash
 ```
 
------
+---
 
 ### install-swift-openapi-generator.sh
 
-**Purpose**: Installs the **Swift OpenAPI Generator** tool.
+#### Purpose
 
-**Parameters**:
+Installs the Swift OpenAPI Generator CLI tool.
 
-* `-v <X.Y.Z>`: Specifies the version to install.
+#### Behavior
 
-**Makefile Command**:
+* Builds from source
+* Supports version pinning
+
+#### Parameters
+
+* `-v <version>` – install a specific version
+
+#### Ignore files
+
+_None_
+
+**Raw curl examples**
+
+_Latest version:_
 
 ```sh
-make install-openapi
+curl -s $(baseUrl)/install-swift-openapi-generator.sh | bash
 ```
 
-**Raw curl Command (Version Example)**:
+_Specific version:_
 
 ```sh
 curl -s $(baseUrl)/install-swift-openapi-generator.sh | bash -s -- -v 1.2.2
 ```
 
------
+---
 
 ### run-clean.sh
 
-**Purpose**: Cleans up build artifacts and other temporary files (e.g., `.build`, `.swiftpm`).
+#### Purpose
 
-**Makefile Command**:
+Removes generated build artifacts and temporary files. ⚠️ Irreversible operation.
 
-```sh
-make run-clean
-```
+#### Behavior
 
-**Raw curl Command**:
+* Deletes `.build`, `.swiftpm`, and generated files
+* Intended for local development use
+
+
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/run-clean.sh | bash
 ```
 
------
+---
 
 ### run-docc-docker.sh
 
-**Purpose**: Serves the generated DocC documentation using a Docker container running Nginx.
+#### Purpose
 
-**Parameters**:
+Serves generated DocC documentation locally using Docker.
 
-* `-n <name>`: Adds a custom identifier for the container.
-* `-p <host:container>`: Adds a custom port mapping (default: `8000:80`).
+#### Behavior
 
-**Makefile Command**:
+* Runs Nginx in the foreground
+* Exposes documentation over HTTP
 
-```sh
-make run-docc
-```
+#### Parameters
 
-**Raw curl Command (Custom Port Example)**:
+* `-n <name>` – container name
+* `-p <host:container>` – port mapping
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/run-docc-docker.sh | bash -s -- -p 8800:80
 ```
 
------
+---
 
 ### run-openapi-docker.sh
 
-**Purpose**: Serves the OpenAPI documentation using a Docker container running Nginx.
+#### Purpose
 
-**Parameters**:
+Serves OpenAPI documentation locally using Docker.
 
-* `-n <name>`: Adds a custom identifier for the container.
-* `-p <host:container>`: Adds a custom port mapping (default: `8888:80`).
+#### Behavior
 
-**Makefile Command**:
+* Runs Nginx in the foreground
+* Exposes documentation over HTTP
+
+#### Parameters
+
+* `-n <name>` – container name
+* `-p <host:container>` – port mapping
+
+#### Ignore files**
+
+_None_
+
+#### Raw curl example**
 
 ```sh
-make run-openapi
+curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n openapi-preview
 ```
 
-**Raw curl Command (Custom Name Example)**:
-
-```sh
-curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n new-name
-```
-
------
+---
 
 ### run-swift-format.sh
 
-**Purpose**: Checks/formats Swift code using the `swift-format` tool. If configuration is missing, it downloads defaults.
-**Configuration**: Uses the **`.swift-format`** file for format rules and the **`.swiftformatignore`** file to exclude files/directories from the process.
+#### Purpose
 
-**Parameters**:
+Runs `swift-format` to lint or format Swift source files.
 
-* `--fix`: Automatically applies formatting instead of checking.
+#### Behavior
 
-**Makefile Command (Check)**:
+* Downloads default configuration if missing
+* Respects ignore rules
+* Supports parallel execution
+
+#### Parameters
+
+* `--fix` – format files in-place
+
+#### Ignore files
+
+* `.swiftformatignore` – excludes files from formatting
+
+#### Raw curl examples
+
+_Lint only:_
 
 ```sh
-make lint
+curl -s $(baseUrl)/run-swift-format.sh | bash
 ```
 
-**Raw curl Command (Fix)**:
+_Fix formatting:_
 
 ```sh
 curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix

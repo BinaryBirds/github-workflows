@@ -4,7 +4,7 @@
 # This script generates DocC documentation for a Swift package.
 #
 # Features:
-# - Supports explicit target selection via .doccTargetList
+# - Supports explicit target selection via .docctargetlist
 # - Falls back to auto-detecting documentable Swift targets
 # - Injects swift-docc-plugin temporarily if missing
 # - Supports local preview mode and GitHub Pages static hosting
@@ -24,7 +24,7 @@ fatal() { error "$@"; exit 1; }
 
 # Configuration / state
 OUTPUT_DIR="./docs"            # Output directory for generated documentation
-TARGETS_FILE=".doccTargetList" # Optional file listing explicit DocC targets
+TARGETS_FILE=".docctargetlist" # Optional file listing explicit DocC targets
 TARGETS=""                     # Raw newline-separated target names
 TARGET_FLAGS=()                # --target flags passed to SwiftPM
 COMBINED_FLAG=""               # Experimental combined documentation flag
@@ -133,7 +133,7 @@ log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
 ensure_clean_git
 ensure_docc_plugin
 
-# Load targets from .doccTargetList
+# Load targets from .docctargetlist
 #
 # If present, this file defines the authoritative list of DocC targets.
 # Empty lines are ignored.
@@ -172,7 +172,7 @@ auto_detect_targets() {
 
 # Target selection
 #
-# Prefer .doccTargetList if present, otherwise fall back to auto-detection.
+# Prefer .docctargetlist if present, otherwise fall back to auto-detection.
 if [ -f "$TARGETS_FILE" ]; then
     log "Using targets from $TARGETS_FILE"
     load_from_config

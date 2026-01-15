@@ -60,7 +60,7 @@ This workflow handles the generation and deployment of DocC documentation:
 
 * **Builds DocC Documentation**: Uses a Swift 6.2 Docker image to build the documentation.
 * **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
-* **Target Configuration**: Respects `.doccTargetList` if present.
+* **Target Configuration**: Respects `.docctargetlist` if present.
 
 **Example Usage (Caller Repository):**
 
@@ -165,7 +165,7 @@ Runs DocC documentation analysis in strict mode, treating warnings as errors.
 
 #### Behavior
 
-* Uses `.doccTargetList` when present, otherwise auto-detects targets
+* Uses `.docctargetlist` when present, otherwise auto-detects targets
 * Temporarily injects `swift-docc-plugin` if missing
 * Requires a clean git working tree locally
 * Restores git state after execution
@@ -176,7 +176,7 @@ _None_
 
 #### Ignore files
 
-* `.doccTargetList` – explicitly defines documented targets
+* `.docctargetlist` – explicitly defines documented targets
 
 #### Raw curl example
 
@@ -379,7 +379,7 @@ Generates DocC documentation into the `docs/` directory.
 
 #### Ignore files
 
-* `.doccTargetList` – explicitly defines documented targets
+* `.docctargetlist` – explicitly defines documented targets
 
 **Raw curl examples**
 

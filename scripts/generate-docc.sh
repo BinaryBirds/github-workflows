@@ -170,6 +170,79 @@ auto_detect_targets() {
     done
 }
 
+# GitHub Pages redirect generation
+#
+# Pages source = /docs
+# Guarantees:
+#   /            → /documentation/
+#   /documentation/ works for both single & multi-target
+generate_pages_redirects() {
+    local DOC_ROOT="$OUTPUT_DIR/documentation"
+
+    log "Generating GitHub Pages redirects"
+
+    # Ensure Pages does not invoke Jekyll
+    touch "$OUTPUT_DIR/.nojekyll"
+
+    # Always redirect site root → documentation/
+    cat > "$OUTPUT_DIR/index.html" <<EOF
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Documentation</title>
+        <meta http-equiv="refresh" content="0; url=documentation/" />
+        <script>
+        location.replace("documentation/");
+        </script>
+    </head>
+    <body>
+        <p>
+        Redirecting to documentation…
+        <a href="documentation/">Continue</a>
+        </p>
+    </body>
+    </html>
+EOF
+
+    # If DocC already generated documentation/index.html,
+    # this is multi-target and nothing else is needed.
+    if [ -f "$DOC_ROOT/index.html" ]; then
+        log "Multi-target DocC detected — using DocC landing page"
+        return 0
+    fi
+
+    # Single target → generate documentation/index.html redirect
+    local TARGET
+    TARGET=$(ls -d "$DOC_ROOT"/*/ 2>/dev/null | head -n 1 | xargs basename)
+
+    if [ -z "$TARGET" ]; then
+        fatal "Unable to determine single DocC target for redirect"
+    fi
+
+    cat > "$DOC_ROOT/index.html" <<EOF
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Documentation</title>
+        <meta http-equiv="refresh" content="0; url=$TARGET/index.html" />
+        <script>
+        location.replace("$TARGET/index.html");
+        </script>
+    </head>
+    <body>
+        <p>
+        Redirecting to documentation…
+        <a href="$TARGET/index.html">Continue</a>
+        </p>
+    </body>
+    </html>
+EOF
+
+    log "Single-target documentation redirect generated → documentation/$TARGET/index.html"
+}
+
 # Target selection
 #
 # Prefer .docctargetlist if present, otherwise fall back to auto-detection.
@@ -231,6 +304,10 @@ fi
 # Report failure without hiding the exit code
 if [ "$DOCS_EXIT_CODE" -ne 0 ]; then
     log "WARNING: Documentation generation failed (exit code $DOCS_EXIT_CODE)"
+fi
+
+if ! $LOCAL_MODE && [ "$DOCS_EXIT_CODE" -eq 0 ]; then
+    generate_pages_redirects
 fi
 
 # Cleanup and exit

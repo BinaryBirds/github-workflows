@@ -62,7 +62,7 @@ This workflow handles the generation and deployment of DocC documentation:
 * **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
 * **Target Configuration**: Respects `.docctargetlist` if present.
 
-**Example Usage (Caller Repository):**
+#### Example Usage (Caller Repository)
 
 ```yaml
 jobs:
@@ -289,7 +289,7 @@ Ensures Swift source files contain a consistent, standardized header.
 
 * `.swiftheaderignore` – excludes paths from header validation
 
-**Raw curl examples**
+#### Raw curl examples
 
 _Check only:_
 
@@ -381,7 +381,7 @@ Generates DocC documentation into the `docs/` directory.
 
 * `.docctargetlist` – explicitly defines documented targets
 
-**Raw curl examples**
+#### Raw curl examples
 
 _GitHub Pages output:_
 
@@ -443,7 +443,7 @@ Installs the Swift OpenAPI Generator CLI tool.
 
 _None_
 
-**Raw curl examples**
+#### Raw curl examples
 
 _Latest version:_
 
@@ -532,11 +532,11 @@ Serves OpenAPI documentation locally using Docker.
 * `-n <name>` – container name
 * `-p <host:container>` – port mapping
 
-#### Ignore files**
+#### Ignore files
 
 _None_
 
-#### Raw curl example**
+#### Raw curl example
 
 ```sh
 curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n openapi-preview

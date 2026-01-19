@@ -170,21 +170,24 @@ auto_detect_targets() {
     done
 }
 
-# GitHub Pages redirect generation
+# Generate GitHub Pages redirects for DocC output
 #
 # Pages source = /docs
-# Guarantees:
-#   /            → /documentation/
-#   /documentation/ works for both single & multi-target
+# Ensures:
+#   /                    → /documentation/
+#   /documentation        → DocC landing page (multi-target)
+#   /documentation        → /documentation/<Target>/index.html (single-target)
 generate_pages_redirects() {
     local DOC_ROOT="$OUTPUT_DIR/documentation"
 
     log "Generating GitHub Pages redirects"
 
-    # Ensure Pages does not invoke Jekyll
+    # Prevent GitHub Pages from invoking Jekyll
     touch "$OUTPUT_DIR/.nojekyll"
 
-    # Always redirect site root → documentation/
+    # ------------------------------------------------------------------
+    # 1. Always redirect site root (/) → documentation/
+    # ------------------------------------------------------------------
     cat > "$OUTPUT_DIR/index.html" <<EOF
     <!DOCTYPE html>
     <html lang="en">
@@ -205,14 +208,18 @@ generate_pages_redirects() {
     </html>
 EOF
 
-    # If DocC already generated documentation/index.html,
-    # this is multi-target and nothing else is needed.
+    # ------------------------------------------------------------------
+    # 2. If DocC already created documentation/index.html
+    #    → multi-target, nothing more to do
+    # ------------------------------------------------------------------
     if [ -f "$DOC_ROOT/index.html" ]; then
-        log "Multi-target DocC detected — using DocC landing page"
+        log "Multi-target DocC detected — using DocC-generated landing page"
         return 0
     fi
 
-    # Single target → generate documentation/index.html redirect
+    # ------------------------------------------------------------------
+    # 3. Single-target → generate documentation/index.html redirect
+    # ------------------------------------------------------------------
     local TARGET
     TARGET=$(ls -d "$DOC_ROOT"/*/ 2>/dev/null | head -n 1 | xargs basename)
 
@@ -240,7 +247,7 @@ EOF
     </html>
 EOF
 
-    log "Single-target documentation redirect generated → documentation/$TARGET/index.html"
+    log "Single-target redirect generated → documentation/$TARGET/index.html"
 }
 
 # Target selection

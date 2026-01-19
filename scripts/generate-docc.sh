@@ -170,6 +170,76 @@ auto_detect_targets() {
     done
 }
 
+# Generate GitHub Pages redirects for DocC output
+#
+# Pages source = /docs
+# DocC generated with --hosting-base-path "$REPO_NAME"
+generate_pages_redirects() {
+    local DOC_ROOT="$OUTPUT_DIR/documentation"
+
+    if [ -z "$REPO_NAME" ]; then
+        fatal "REPO_NAME must be set for GitHub Pages redirects"
+    fi
+
+    local BASE_PATH="/$REPO_NAME"
+
+    log "Generating GitHub Pages redirects (base path: $BASE_PATH)"
+
+    # Prevent Jekyll interference
+    touch "$OUTPUT_DIR/.nojekyll"
+
+    # ------------------------------------------------------------
+    # 1. Site root redirect → /documentation/
+    # ------------------------------------------------------------
+    cat > "$OUTPUT_DIR/index.html" <<EOF
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Documentation</title>
+        <meta http-equiv="refresh" content="0; url=$BASE_PATH/documentation/" />
+        <script>
+        location.replace("$BASE_PATH/documentation/");
+        </script>
+    </head>
+    </html>
+EOF
+
+    # ------------------------------------------------------------
+    # 2. If documentation/index.html exists → multi-target
+    # ------------------------------------------------------------
+    if [ -f "$DOC_ROOT/index.html" ]; then
+        log "Multi-target DocC detected — using DocC landing page"
+        return 0
+    fi
+
+    # ------------------------------------------------------------
+    # 3. Single-target → redirect /documentation/ → /documentation/<Target>/
+    # ------------------------------------------------------------
+    local TARGET
+    TARGET=$(ls -d "$DOC_ROOT"/*/ 2>/dev/null | head -n 1 | xargs basename)
+
+    if [ -z "$TARGET" ]; then
+        fatal "Unable to determine single DocC target"
+    fi
+
+    cat > "$DOC_ROOT/index.html" <<EOF
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Documentation</title>
+        <meta http-equiv="refresh" content="0; url=$BASE_PATH/documentation/$TARGET/" />
+        <script>
+        location.replace("$BASE_PATH/documentation/$TARGET/");
+        </script>
+    </head>
+    </html>
+EOF
+
+    log "Single-target redirect generated → $BASE_PATH/documentation/$TARGET/"
+}
+
 # Target selection
 #
 # Prefer .docctargetlist if present, otherwise fall back to auto-detection.
@@ -231,6 +301,10 @@ fi
 # Report failure without hiding the exit code
 if [ "$DOCS_EXIT_CODE" -ne 0 ]; then
     log "WARNING: Documentation generation failed (exit code $DOCS_EXIT_CODE)"
+fi
+
+if ! $LOCAL_MODE && [ "$DOCS_EXIT_CODE" -eq 0 ]; then
+    generate_pages_redirects
 fi
 
 # Cleanup and exit

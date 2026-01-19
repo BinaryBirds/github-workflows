@@ -173,58 +173,54 @@ auto_detect_targets() {
 # Generate GitHub Pages redirects for DocC output
 #
 # Pages source = /docs
-# Ensures:
-#   /                    → /documentation/
-#   /documentation        → DocC landing page (multi-target)
-#   /documentation        → /documentation/<Target>/index.html (single-target)
+# DocC generated with --hosting-base-path "$REPO_NAME"
 generate_pages_redirects() {
     local DOC_ROOT="$OUTPUT_DIR/documentation"
 
-    log "Generating GitHub Pages redirects"
+    if [ -z "$REPO_NAME" ]; then
+        fatal "REPO_NAME must be set for GitHub Pages redirects"
+    fi
 
-    # Prevent GitHub Pages from invoking Jekyll
+    local BASE_PATH="/$REPO_NAME"
+
+    log "Generating GitHub Pages redirects (base path: $BASE_PATH)"
+
+    # Prevent Jekyll interference
     touch "$OUTPUT_DIR/.nojekyll"
 
-    # ------------------------------------------------------------------
-    # 1. Always redirect site root (/) → documentation/
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # 1. Site root redirect → /documentation/
+    # ------------------------------------------------------------
     cat > "$OUTPUT_DIR/index.html" <<EOF
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="utf-8" />
         <title>Documentation</title>
-        <meta http-equiv="refresh" content="0; url=documentation/" />
+        <meta http-equiv="refresh" content="0; url=$BASE_PATH/documentation/" />
         <script>
-        location.replace("documentation/");
+        location.replace("$BASE_PATH/documentation/");
         </script>
     </head>
-    <body>
-        <p>
-        Redirecting to documentation…
-        <a href="documentation/">Continue</a>
-        </p>
-    </body>
     </html>
 EOF
 
-    # ------------------------------------------------------------------
-    # 2. If DocC already created documentation/index.html
-    #    → multi-target, nothing more to do
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # 2. If documentation/index.html exists → multi-target
+    # ------------------------------------------------------------
     if [ -f "$DOC_ROOT/index.html" ]; then
-        log "Multi-target DocC detected — using DocC-generated landing page"
+        log "Multi-target DocC detected — using DocC landing page"
         return 0
     fi
 
-    # ------------------------------------------------------------------
-    # 3. Single-target → generate documentation/index.html redirect
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # 3. Single-target → redirect /documentation/ → /documentation/<Target>/
+    # ------------------------------------------------------------
     local TARGET
     TARGET=$(ls -d "$DOC_ROOT"/*/ 2>/dev/null | head -n 1 | xargs basename)
 
     if [ -z "$TARGET" ]; then
-        fatal "Unable to determine single DocC target for redirect"
+        fatal "Unable to determine single DocC target"
     fi
 
     cat > "$DOC_ROOT/index.html" <<EOF
@@ -233,21 +229,15 @@ EOF
     <head>
         <meta charset="utf-8" />
         <title>Documentation</title>
-        <meta http-equiv="refresh" content="0; url=$TARGET/index.html" />
+        <meta http-equiv="refresh" content="0; url=$BASE_PATH/documentation/$TARGET/" />
         <script>
-        location.replace("$TARGET/index.html");
+        location.replace("$BASE_PATH/documentation/$TARGET/");
         </script>
     </head>
-    <body>
-        <p>
-        Redirecting to documentation…
-        <a href="$TARGET/index.html">Continue</a>
-        </p>
-    </body>
     </html>
 EOF
 
-    log "Single-target redirect generated → documentation/$TARGET/index.html"
+    log "Single-target redirect generated → $BASE_PATH/documentation/$TARGET/"
 }
 
 # Target selection

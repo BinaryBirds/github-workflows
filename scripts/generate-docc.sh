@@ -197,6 +197,10 @@ ensure_docc_plugin
 swift package dump-package >/dev/null \
   || fatal "Package.swift became invalid after injecting swift-docc-plugin"
 
+# Debug: print Package.swift after DocC injection
+log "Package.swift after DocC injection:"
+sed 's/^/| /' Package.swift >&2
+
 # Load targets from .docctargetlist
 #
 # If present, this file defines the authoritative list of DocC targets.

@@ -105,23 +105,19 @@ fi
 
 log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
 
-# ------------------------------------------------------------
-# Ensures that swift-docc-plugin (>= 1.4.0) is present
-# in Package.swift.
+# Ensures that the swift-docc-plugin package dependency (>= 1.4.0)
+# is present in the top-level Package.swift manifest.
 #
 # Behavior:
-# - If the plugin dependency already exists, does nothing.
-# - If dependencies exist, injects the plugin into them.
-# - If dependencies do not exist:
-#   - Inserts them after products, or
-#   - Before targets as a fallback.
+# - If the swift-docc-plugin dependency already exists, no changes are made.
+# - If a Package.dependencies section exists, the dependency is added to it.
+# - If no dependencies section exists, a new one is inserted immediately
+#   before the Package.targets section to preserve canonical argument order.
 #
-# NOTE:
-# - This function mutates Package.swift.
-# - Caller MUST ensure the git working tree is clean
-#   and MUST rollback changes if needed.
-# ------------------------------------------------------------
-
+# Important:
+# - This function performs an in-place mutation of Package.swift.
+# - The caller MUST ensure the git working tree is clean before invocation.
+# - The caller is responsible for restoring the original file if required.
 ensure_docc_plugin() {
     local PACKAGE_FILE="Package.swift"
 
@@ -129,7 +125,7 @@ ensure_docc_plugin() {
         fatal "Package.swift not found"
     fi
 
-    # Already present → nothing to do
+    # If already present, do nothing (idempotent)
     if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — using existing configuration"
         return 0
@@ -137,25 +133,47 @@ ensure_docc_plugin() {
 
     log "swift-docc-plugin missing — injecting dependency (from 1.4.0)"
 
-    # We must have a package-level targets section
-    if ! grep -q '^[[:space:]]*targets[[:space:]]*:' "$PACKAGE_FILE"; then
-        fatal "Cannot inject dependencies: Package.targets section not found"
+    # Case 1: Package.dependencies exists (empty or non-empty)
+    if grep -q '^[[:space:]]*dependencies[[:space:]]*:' "$PACKAGE_FILE"; then
+        log "Existing Package.dependencies found — appending dependency"
+
+        perl -0777 -i -pe '
+            s|(
+                dependencies:\s*\[\s*
+            )
+            |$1
+                .package(
+                    url: "https://github.com/apple/swift-docc-plugin",
+                    from: "1.4.0"
+                ),
+            |xs
+        ' "$PACKAGE_FILE"
+
+        return 0
     fi
 
-    # Insert dependencies block immediately before `targets:`
-    perl -0777 -i -pe '
-        s|(
-            \n[[:space:]]*targets[[:space:]]*:
-        )
-        |
-        \n    dependencies: [
-            .package(
-                url: "https://github.com/apple/swift-docc-plugin",
-                from: "1.4.0"
+    # Case 2: No dependencies → insert before targets
+    if grep -q '^[[:space:]]*targets[[:space:]]*:' "$PACKAGE_FILE"; then
+        log "No Package.dependencies found — inserting before targets"
+
+        perl -0777 -i -pe '
+            s|(
+                \n[[:space:]]*targets[[:space:]]*:
             )
-        ],$1
-        |xs
-    ' "$PACKAGE_FILE"
+            |
+            \n    dependencies: [
+                .package(
+                    url: "https://github.com/apple/swift-docc-plugin",
+                    from: "1.4.0"
+                )
+            ],$1
+            |xs
+        ' "$PACKAGE_FILE"
+
+        return 0
+    fi
+
+    fatal "Unable to safely inject swift-docc-plugin into Package.swift"
 }
 
 # Pre-flight checks
@@ -165,10 +183,6 @@ ensure_docc_plugin
 # Validate Package.swift after mutation
 swift package dump-package >/dev/null \
   || fatal "Package.swift became invalid after injecting swift-docc-plugin"
-
-# Debug: print Package.swift after DocC injection
-log "Package.swift after DocC injection:"
-sed 's/^/| /' Package.swift >&2
 
 # Load targets from .docctargetlist
 #
@@ -289,7 +303,6 @@ else
 fi
 
 TARGET_COUNT=$(printf "%s\n" "$TARGETS" | grep -c .)
-
 log "Targets detected: $TARGET_COUNT"
 
 # Combined documentation flag

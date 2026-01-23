@@ -63,41 +63,38 @@ reset_git_after_analysis() {
     fi
 }
 
-# ------------------------------------------------------------
-# Ensures that swift-docc-plugin (>= 1.4.0) is present
-# in Package.swift.
+# Ensures that the swift-docc-plugin package dependency (>= 1.4.0)
+# is present in the top-level Package.swift manifest.
 #
 # Behavior:
-# - If the plugin dependency already exists, does nothing.
-# - If dependencies exist, injects the plugin into them.
-# - If dependencies do not exist:
-#   - Inserts them after products, or
-#   - Before targets as a fallback.
+# - If the swift-docc-plugin dependency already exists, no changes are made.
+# - If a Package.dependencies section exists, the dependency is added to it.
+# - If no dependencies section exists, a new one is inserted immediately
+#   before the Package.targets section to preserve canonical argument order.
 #
-# NOTE:
-# - This function mutates Package.swift.
-# - Caller MUST ensure the git working tree is clean
-#   and MUST rollback changes if needed.
-# ------------------------------------------------------------
-
+# Important:
+# - This function performs an in-place mutation of Package.swift.
+# - The caller MUST ensure the git working tree is clean before invocation.
+# - The caller is responsible for restoring the original file if required.
 ensure_docc_plugin() {
     local PACKAGE_FILE="Package.swift"
 
     if [ ! -f "$PACKAGE_FILE" ]; then
-        echo "** ERROR: Package.swift not found" >&2
-        return 1
+        fatal "Package.swift not found"
     fi
 
-    # Already present (any formatting)
+    # If already present, do nothing (idempotent)
     if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
-        echo "** swift-docc-plugin already present — using existing configuration" >&2
+        log "swift-docc-plugin already present — using existing configuration"
         return 0
     fi
 
-    echo "** swift-docc-plugin missing — injecting temporarily (from 1.4.0)" >&2
+    log "swift-docc-plugin missing — injecting dependency (from 1.4.0)"
 
-    # Case 1: dependencies section exists
-    if grep -q 'dependencies\s*:' "$PACKAGE_FILE"; then
+    # Case 1: Package.dependencies exists (empty or non-empty)
+    if grep -q '^[[:space:]]*dependencies[[:space:]]*:' "$PACKAGE_FILE"; then
+        log "Existing Package.dependencies found — appending dependency"
+
         perl -0777 -i -pe '
             s|(
                 dependencies:\s*\[\s*
@@ -109,47 +106,32 @@ ensure_docc_plugin() {
                 ),
             |xs
         ' "$PACKAGE_FILE"
+
         return 0
     fi
 
-    # Case 2: products exist → insert after products
-    if grep -q 'products\s*:' "$PACKAGE_FILE"; then
+    # Case 2: No dependencies → insert before targets
+    if grep -q '^[[:space:]]*targets[[:space:]]*:' "$PACKAGE_FILE"; then
+        log "No Package.dependencies found — inserting before targets"
+
         perl -0777 -i -pe '
             s|(
-                products:\s*\[[^\]]*\],\s*
+                \n[[:space:]]*targets[[:space:]]*:
             )
-            |$1
-            dependencies: [
+            |
+            \n    dependencies: [
                 .package(
                     url: "https://github.com/apple/swift-docc-plugin",
                     from: "1.4.0"
                 )
-            ],
-        |xs
+            ],$1
+            |xs
         ' "$PACKAGE_FILE"
+
         return 0
     fi
 
-    # Case 3: fallback → insert before targets
-    if grep -q 'targets\s*:' "$PACKAGE_FILE"; then
-        perl -0777 -i -pe '
-            s|(
-                targets:\s*\[
-            )
-            |dependencies: [
-                .package(
-                    url: "https://github.com/apple/swift-docc-plugin",
-                    from: "1.4.0"
-                )
-            ],
-            $1
-        |xs
-        ' "$PACKAGE_FILE"
-        return 0
-    fi
-
-    echo "** ERROR: Unsupported Package.swift structure" >&2
-    return 1
+    fatal "Unable to safely inject swift-docc-plugin into Package.swift"
 }
 
 # Pre-flight checks
@@ -207,10 +189,7 @@ while IFS= read -r TARGET; do
 done <<< "$TARGETS"
 
 TARGET_COUNT="${#TARGET_LIST[@]}"
-
-log "Found targets:"
-printf "%s\n" "${TARGET_LIST[@]}"
-log "Target count: $TARGET_COUNT"
+log "Targets detected: $TARGET_COUNT"
 
 # Run DocC analysis
 #

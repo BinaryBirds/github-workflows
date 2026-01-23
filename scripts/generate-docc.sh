@@ -129,64 +129,33 @@ ensure_docc_plugin() {
         fatal "Package.swift not found"
     fi
 
-    # Already present?
+    # Already present → nothing to do
     if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — using existing configuration"
         return 0
     fi
 
-    log "swift-docc-plugin missing — inspecting Package.swift structure"
+    log "swift-docc-plugin missing — injecting dependency (from 1.4.0)"
 
-    # Dump package structure as JSON
-    local PACKAGE_JSON
-    PACKAGE_JSON="$(swift package dump-package)"
-
-    local HAS_DEPENDENCIES
-    HAS_DEPENDENCIES=$(echo "$PACKAGE_JSON" | jq '.dependencies | length > 0')
-
-    local HAS_PRODUCTS
-    HAS_PRODUCTS=$(echo "$PACKAGE_JSON" | jq '.products | length > 0')
-
-    log "Package structure: dependencies=$HAS_DEPENDENCIES, products=$HAS_PRODUCTS"
-
-    # Case 1: dependencies exist → inject into them
-    if [ "$HAS_DEPENDENCIES" = "true" ]; then
-        log "Injecting swift-docc-plugin into existing Package.dependencies"
-        perl -0777 -i -pe '
-            s|(
-                dependencies:\s*\[\s*
-            )
-            |$1
-                .package(
-                    url: "https://github.com/apple/swift-docc-plugin",
-                    from: "1.4.0"
-                ),
-            |xs
-        ' "$PACKAGE_FILE"
-        return 0
+    # We must have a package-level targets section
+    if ! grep -q '^[[:space:]]*targets[[:space:]]*:' "$PACKAGE_FILE"; then
+        fatal "Cannot inject dependencies: Package.targets section not found"
     fi
 
-    # Case 2: no dependencies, but products exist → insert dependencies after products
-    if [ "$HAS_PRODUCTS" = "true" ]; then
-        log "Adding Package.dependencies after products"
-        perl -0777 -i -pe '
-            s|(
-                products:\s*\[[^\]]*\],\s*
+    # Insert dependencies block immediately before `targets:`
+    perl -0777 -i -pe '
+        s|(
+            \n[[:space:]]*targets[[:space:]]*:
+        )
+        |
+        \n    dependencies: [
+            .package(
+                url: "https://github.com/apple/swift-docc-plugin",
+                from: "1.4.0"
             )
-            |$1
-            dependencies: [
-                .package(
-                    url: "https://github.com/apple/swift-docc-plugin",
-                    from: "1.4.0"
-                )
-            ],
+        ],$1
         |xs
-        ' "$PACKAGE_FILE"
-        return 0
-    fi
-
-    # Case 3: unsafe to inject
-    fatal "Unable to safely inject swift-docc-plugin (no Package.dependencies or products section)"
+    ' "$PACKAGE_FILE"
 }
 
 # Pre-flight checks

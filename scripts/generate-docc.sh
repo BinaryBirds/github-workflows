@@ -72,7 +72,7 @@ ensure_clean_git() {
 }
 
 # Ensure swift-docc-plugin is available
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(pwd)"
 source "$SCRIPT_DIR/lib/ensure-docc-plugin.sh"
 
 # Restore git state after documentation generation (local only)

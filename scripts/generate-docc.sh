@@ -125,7 +125,7 @@ ensure_docc_plugin() {
         fatal "Package.swift not found"
     fi
 
-    # If already present, do nothing (idempotent)
+    # Idempotent: already present
     if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — using existing configuration"
         return 0
@@ -133,13 +133,25 @@ ensure_docc_plugin() {
 
     log "swift-docc-plugin missing — injecting dependency (from 1.4.0)"
 
-    # Case 1: Package.dependencies exists (empty or non-empty)
-    if grep -q '^[[:space:]]*dependencies[[:space:]]*:' "$PACKAGE_FILE"; then
+    # Extract package-level section (everything before targets:)
+    local PACKAGE_HEAD
+    PACKAGE_HEAD="$(perl -0777 -ne '
+        if (/^(.*?\n\s*targets\s*:)/s) {
+            print $1;
+        }
+    ' "$PACKAGE_FILE")"
+
+    if [ -z "$PACKAGE_HEAD" ]; then
+        fatal "Unable to locate Package.targets section"
+    fi
+
+    # Case 1: package-level dependencies already exist
+    if echo "$PACKAGE_HEAD" | grep -q '^[[:space:]]*dependencies[[:space:]]*:'; then
         log "Existing Package.dependencies found — appending dependency"
 
         perl -0777 -i -pe '
             s|(
-                dependencies:\s*\[\s*
+                (dependencies:\s*\[\s*)
             )
             |$1
                 .package(
@@ -152,28 +164,22 @@ ensure_docc_plugin() {
         return 0
     fi
 
-    # Case 2: No dependencies → insert before targets
-    if grep -q '^[[:space:]]*targets[[:space:]]*:' "$PACKAGE_FILE"; then
-        log "No Package.dependencies found — inserting before targets"
+    # Case 2: no package-level dependencies → insert before targets
+    log "No Package.dependencies found — inserting before targets"
 
-        perl -0777 -i -pe '
-            s|(
-                \n[[:space:]]*targets[[:space:]]*:
+    perl -0777 -i -pe '
+        s|(
+            \n[[:space:]]*targets[[:space:]]*:
+        )
+        |
+        \n    dependencies: [
+            .package(
+                url: "https://github.com/apple/swift-docc-plugin",
+                from: "1.4.0"
             )
-            |
-            \n    dependencies: [
-                .package(
-                    url: "https://github.com/apple/swift-docc-plugin",
-                    from: "1.4.0"
-                )
-            ],$1
-            |xs
-        ' "$PACKAGE_FILE"
-
-        return 0
-    fi
-
-    fatal "Unable to safely inject swift-docc-plugin into Package.swift"
+        ],$1
+        |xs
+    ' "$PACKAGE_FILE"
 }
 
 # Pre-flight checks

@@ -49,29 +49,8 @@ ensure_clean_git() {
 }
 
 # Ensure swift-docc-plugin is available
-#
-# DocC analysis requires the swift-docc-plugin dependency.
-# If it is missing, we inject it temporarily into Package.swift.
-#
-# This mirrors the behavior of Swift's upstream documentation workflows.
-ensure_docc_plugin() {
-    local PACKAGE_FILE="Package.swift"
-
-    if [ ! -f "$PACKAGE_FILE" ]; then
-        fatal "Package.swift not found"
-    fi
-
-    if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
-        log "swift-docc-plugin already present — using existing configuration"
-        return 0
-    fi
-
-    log "swift-docc-plugin missing — injecting temporarily (from 1.4.0)"
-
-    perl -0777 -i -pe '
-        s|(dependencies:\s*\[)|$1\n        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),|s
-    ' "$PACKAGE_FILE"
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/ensure-docc-plugin.sh"
 
 # Reset git state after analysis (local only)
 #
@@ -90,9 +69,12 @@ reset_git_after_analysis() {
 
 
 # Pre-flight checks
-
 ensure_clean_git
 ensure_docc_plugin
+
+# Validate Package.swift after mutation
+swift package dump-package >/dev/null \
+  || fatal "Package.swift became invalid after injecting swift-docc-plugin"
 
 # Load targets from .docctargetlist
 #

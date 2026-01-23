@@ -72,28 +72,8 @@ ensure_clean_git() {
 }
 
 # Ensure swift-docc-plugin is available
-#
-# DocC generation requires the swift-docc-plugin dependency.
-# If missing, it is injected temporarily into Package.swift.
-# This mirrors Swift’s upstream documentation workflows.
-ensure_docc_plugin() {
-    local PACKAGE_FILE="Package.swift"
-
-    if [ ! -f "$PACKAGE_FILE" ]; then
-        fatal "Package.swift not found"
-    fi
-
-    if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
-        log "swift-docc-plugin already present — using existing configuration"
-        return 0
-    fi
-
-    log "swift-docc-plugin missing — injecting temporarily (from 1.4.0)"
-
-    perl -0777 -i -pe '
-        s|(dependencies:\s*\[)|$1\n        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),|s
-    ' "$PACKAGE_FILE"
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/ensure-docc-plugin.sh"
 
 # Restore git state after documentation generation (local only)
 #
@@ -132,6 +112,10 @@ log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
 # Pre-flight checks
 ensure_clean_git
 ensure_docc_plugin
+
+# Validate Package.swift after mutation
+swift package dump-package >/dev/null \
+  || fatal "Package.swift became invalid after injecting swift-docc-plugin"
 
 # Load targets from .docctargetlist
 #
@@ -253,9 +237,7 @@ fi
 
 TARGET_COUNT=$(printf "%s\n" "$TARGETS" | grep -c .)
 
-log "Targets detected:"
-printf "%s\n" "$TARGETS"
-log "Target count: $TARGET_COUNT"
+log "Targets detected: $TARGET_COUNT"
 
 # Combined documentation flag
 #

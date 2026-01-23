@@ -126,20 +126,32 @@ ensure_docc_plugin() {
     local PACKAGE_FILE="Package.swift"
 
     if [ ! -f "$PACKAGE_FILE" ]; then
-        echo "** ERROR: Package.swift not found" >&2
-        return 1
+        fatal "Package.swift not found"
     fi
 
-    # Already present (any formatting)
+    # Already present?
     if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
-        echo "** swift-docc-plugin already present — using existing configuration" >&2
+        log "swift-docc-plugin already present — using existing configuration"
         return 0
     fi
 
-    echo "** swift-docc-plugin missing — injecting temporarily (from 1.4.0)" >&2
+    log "swift-docc-plugin missing — inspecting Package.swift structure"
 
-    # Case 1: dependencies section exists
-    if grep -q 'dependencies\s*:' "$PACKAGE_FILE"; then
+    # Dump package structure as JSON
+    local PACKAGE_JSON
+    PACKAGE_JSON="$(swift package dump-package)"
+
+    local HAS_DEPENDENCIES
+    HAS_DEPENDENCIES=$(echo "$PACKAGE_JSON" | jq '.dependencies | length > 0')
+
+    local HAS_PRODUCTS
+    HAS_PRODUCTS=$(echo "$PACKAGE_JSON" | jq '.products | length > 0')
+
+    log "Package structure: dependencies=$HAS_DEPENDENCIES, products=$HAS_PRODUCTS"
+
+    # Case 1: dependencies exist → inject into them
+    if [ "$HAS_DEPENDENCIES" = "true" ]; then
+        log "Injecting swift-docc-plugin into existing Package.dependencies"
         perl -0777 -i -pe '
             s|(
                 dependencies:\s*\[\s*
@@ -154,8 +166,9 @@ ensure_docc_plugin() {
         return 0
     fi
 
-    # Case 2: products exist → insert after products
-    if grep -q 'products\s*:' "$PACKAGE_FILE"; then
+    # Case 2: no dependencies, but products exist → insert dependencies after products
+    if [ "$HAS_PRODUCTS" = "true" ]; then
+        log "Adding Package.dependencies after products"
         perl -0777 -i -pe '
             s|(
                 products:\s*\[[^\]]*\],\s*
@@ -172,26 +185,8 @@ ensure_docc_plugin() {
         return 0
     fi
 
-    # Case 3: fallback → insert before targets
-    if grep -q 'targets\s*:' "$PACKAGE_FILE"; then
-        perl -0777 -i -pe '
-            s|(
-                targets:\s*\[
-            )
-            |dependencies: [
-                .package(
-                    url: "https://github.com/apple/swift-docc-plugin",
-                    from: "1.4.0"
-                )
-            ],
-            $1
-        |xs
-        ' "$PACKAGE_FILE"
-        return 0
-    fi
-
-    echo "** ERROR: Unsupported Package.swift structure" >&2
-    return 1
+    # Case 3: unsafe to inject
+    fatal "Unable to safely inject swift-docc-plugin (no Package.dependencies or products section)"
 }
 
 # Pre-flight checks

@@ -31,6 +31,13 @@ COMBINED_FLAG=""               # Experimental combined documentation flag
 LOCAL_MODE=false               # Local preview vs static hosting mode
 REPO_NAME=""                   # Hosting base path (for GitHub Pages)
 
+# Swift package manifest to mutate
+PACKAGE_FILE="Package.swift"
+# Required injection anchor inside dependencies
+INJECT_MARKER='// DOCC-PLUGIN-INJECT' 
+# Dependency line injected after the marker
+DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
+
 # Argument parsing
 #
 # --local        Generate docs for local preview (no static hosting transform)
@@ -71,6 +78,40 @@ ensure_clean_git() {
     fi
 }
 
+# Ensures that swift-docc-plugin is available to SwiftPM.
+#
+# This function injects the dependency using a fixed marker
+# to avoid touching target-level dependencies or relying on
+# fragile text matching.
+ensure_docc_plugin() {
+    [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
+
+    if ! grep -q "[[:space:]]*$INJECT_MARKER" "$PACKAGE_FILE"; then
+        fatal "Injection marker '$INJECT_MARKER' not found in Package.swift"
+    fi
+
+    if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
+        log "swift-docc-plugin already present — skipping injection"
+        return 0
+    fi
+
+    log "Injecting swift-docc-plugin at $INJECT_MARKER"
+
+    awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
+        {
+            print
+            if ($0 ~ marker) {
+                print dep
+            }
+        }
+    ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
+
+    mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
+
+    swift package dump-package >/dev/null \
+      || fatal "Package.swift became invalid after injecting swift-docc-plugin"
+}
+
 # Restore git state after documentation generation (local only)
 #
 # Ensures the repository is returned to a clean state after execution.
@@ -104,83 +145,6 @@ else
 fi
 
 log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
-
-# Ensures that the swift-docc-plugin package dependency (>= 1.4.0)
-# is present in the top-level Package.swift manifest.
-#
-# Behavior:
-# - If the swift-docc-plugin dependency already exists, no changes are made.
-# - If a Package.dependencies section exists, the dependency is added to it.
-# - If no dependencies section exists, a new one is inserted immediately
-#   before the Package.targets section to preserve canonical argument order.
-#
-# Important:
-# - This function performs an in-place mutation of Package.swift.
-# - The caller MUST ensure the git working tree is clean before invocation.
-# - The caller is responsible for restoring the original file if required.
-ensure_docc_plugin() {
-    local PACKAGE_FILE="Package.swift"
-
-    if [ ! -f "$PACKAGE_FILE" ]; then
-        fatal "Package.swift not found"
-    fi
-
-    # Idempotent: already present
-    if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
-        log "swift-docc-plugin already present — using existing configuration"
-        return 0
-    fi
-
-    log "swift-docc-plugin missing — injecting dependency (from 1.4.0)"
-
-    # Extract package-level section (everything before targets:)
-    local PACKAGE_HEAD
-    PACKAGE_HEAD="$(perl -0777 -ne '
-        if (/^(.*?\n\s*targets\s*:)/s) {
-            print $1;
-        }
-    ' "$PACKAGE_FILE")"
-
-    if [ -z "$PACKAGE_HEAD" ]; then
-        fatal "Unable to locate Package.targets section"
-    fi
-
-    # Case 1: package-level dependencies already exist
-    if echo "$PACKAGE_HEAD" | grep -q '^[[:space:]]*dependencies[[:space:]]*:'; then
-        log "Existing Package.dependencies found — appending dependency"
-
-        perl -0777 -i -pe '
-            s|(
-                (dependencies:\s*\[\s*)
-            )
-            |$1
-                .package(
-                    url: "https://github.com/apple/swift-docc-plugin",
-                    from: "1.4.0"
-                ),
-            |xs
-        ' "$PACKAGE_FILE"
-
-        return 0
-    fi
-
-    # Case 2: no package-level dependencies → insert before targets
-    log "No Package.dependencies found — inserting before targets"
-
-    perl -0777 -i -pe '
-        s|(
-            \n[[:space:]]*targets[[:space:]]*:
-        )
-        |
-        \n    dependencies: [
-            .package(
-                url: "https://github.com/apple/swift-docc-plugin",
-                from: "1.4.0"
-            )
-        ],$1
-        |xs
-    ' "$PACKAGE_FILE"
-}
 
 # Pre-flight checks
 ensure_clean_git

@@ -94,8 +94,19 @@ ensure_docc_plugin() {
         return 0
     fi
 
-    # Marker must exist as a standalone line
-    if ! grep -q "^[[:space:]]*${INJECT_MARKER}[[:space:]]*$" "$PACKAGE_FILE"; then
+    # Marker must exist as a standalone line (whitespace allowed)
+    if ! awk -v marker="$INJECT_MARKER" '
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            if (line == marker) {
+                found = 1
+                exit 0
+            }
+        }
+        END { exit found ? 0 : 1 }
+    ' "$PACKAGE_FILE"; then
         fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
     fi
 

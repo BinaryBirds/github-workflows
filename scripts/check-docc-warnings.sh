@@ -34,7 +34,7 @@ TARGET_LIST=()                   # Parsed target names as a Bash array for itera
 # Swift package manifest to mutate
 PACKAGE_FILE="Package.swift"
 # Required injection anchor inside Package.dependencies
-INJECT_MARKER='// DOCC-PLUGIN-INJECT' 
+INJECT_MARKER='// [docc-plugin-placeholder]' 
 # Dependency line injected immediately after the marker
 DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
                                      
@@ -80,7 +80,7 @@ reset_git_after_analysis() {
 # - Package.swift MUST contain a package-level dependencies section
 # - Inside dependencies: [ ... ] there MUST be:
 #
-#     // DOCC-PLUGIN-INJECT
+#     // [docc-plugin-placeholder]
 #
 # Important:
 # - This function mutates Package.swift in place

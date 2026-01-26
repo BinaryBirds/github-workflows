@@ -34,7 +34,7 @@ REPO_NAME=""                   # Hosting base path (for GitHub Pages)
 # Swift package manifest to mutate
 PACKAGE_FILE="Package.swift"
 # Required injection anchor inside dependencies
-INJECT_MARKER='// DOCC-PLUGIN-INJECT' 
+INJECT_MARKER='// [docc-plugin-placeholder]' 
 # Dependency line injected after the marker
 DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
 

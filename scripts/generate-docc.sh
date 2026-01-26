@@ -31,6 +31,13 @@ COMBINED_FLAG=""               # Experimental combined documentation flag
 LOCAL_MODE=false               # Local preview vs static hosting mode
 REPO_NAME=""                   # Hosting base path (for GitHub Pages)
 
+# Swift package manifest to mutate
+PACKAGE_FILE="Package.swift"
+# Required injection anchor inside dependencies
+INJECT_MARKER='// [docc-plugin-placeholder]' 
+# Dependency line injected after the marker
+DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
+
 # Argument parsing
 #
 # --local        Generate docs for local preview (no static hosting transform)
@@ -71,28 +78,38 @@ ensure_clean_git() {
     fi
 }
 
-# Ensure swift-docc-plugin is available
+# Ensures that swift-docc-plugin is available to SwiftPM.
 #
-# DocC generation requires the swift-docc-plugin dependency.
-# If missing, it is injected temporarily into Package.swift.
-# This mirrors Swift’s upstream documentation workflows.
+# This function injects the dependency using a fixed marker
+# to avoid touching target-level dependencies or relying on
+# fragile text matching.
 ensure_docc_plugin() {
-    local PACKAGE_FILE="Package.swift"
+    [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
-    if [ ! -f "$PACKAGE_FILE" ]; then
-        fatal "Package.swift not found"
+    if ! grep -q "[[:space:]]*$INJECT_MARKER" "$PACKAGE_FILE"; then
+        fatal "Injection marker '$INJECT_MARKER' not found in Package.swift"
     fi
 
     if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
-        log "swift-docc-plugin already present — using existing configuration"
+        log "swift-docc-plugin already present — skipping injection"
         return 0
     fi
 
-    log "swift-docc-plugin missing — injecting temporarily (from 1.4.0)"
+    log "Injecting swift-docc-plugin at $INJECT_MARKER"
 
-    perl -0777 -i -pe '
-        s|(dependencies:\s*\[)|$1\n        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),|s
-    ' "$PACKAGE_FILE"
+    awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
+        {
+            print
+            if ($0 ~ marker) {
+                print dep
+            }
+        }
+    ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
+
+    mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
+
+    swift package dump-package >/dev/null \
+      || fatal "Package.swift became invalid after injecting swift-docc-plugin"
 }
 
 # Restore git state after documentation generation (local only)
@@ -252,10 +269,7 @@ else
 fi
 
 TARGET_COUNT=$(printf "%s\n" "$TARGETS" | grep -c .)
-
-log "Targets detected:"
-printf "%s\n" "$TARGETS"
-log "Target count: $TARGET_COUNT"
+log "Targets detected: $TARGET_COUNT"
 
 # Combined documentation flag
 #

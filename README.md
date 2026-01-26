@@ -98,6 +98,26 @@ These combined commands run several scripts in sequence to provide a quick, cons
 The `Makefile` uses the variable `baseUrl` which points to the source of all scripts:
 `https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts`
 
+### DocC dependency placeholder requirement
+
+DocC-related scripts rely on a placeholder inside `Package.swift` to safely inject the `swift-docc-plugin` dependency when needed.
+
+Your `Package.swift` must contain a top-level `dependencies` section (even if empty) and include the following comment:
+
+```swift
+// [docc-plugin-placeholder]
+```
+
+This placeholder defines the only supported injection point. If either the dependencies section or the placeholder is missing, DocC scripts will fail intentionally.
+
+```swift
+dependencies: [
+    // [docc-plugin-placeholder]
+]
+```
+
+The placeholder itself has no effect on builds and does not modify target-level dependencies.
+
 ### check-api-breakage.sh
 
 #### Purpose

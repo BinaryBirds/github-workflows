@@ -78,6 +78,14 @@ get_file_creation_date() {
   fi
 }
 
+# Detects whether the file starts with any header-like comment block
+#
+# This is intentionally loose: if the file starts with comment lines,
+# we assume a header exists and should be replaced, not duplicated.
+has_any_header() {
+  sed -n '1,1p' "$1" | grep -q '^//'
+}
+
 # Header detection
 #
 # A valid header must match this structure exactly:
@@ -114,79 +122,77 @@ is_header_present() {
 #     - Updates incorrect headers
 #     - Inserts missing headers
 check_or_fix_header() {
-  local file="$1"
-  local filename
+  file="$1"
   filename=$(basename "$file")
 
-  local line1 line2 line3 line4 line5
+  # Package.swift is intentionally excluded
+  [ "$filename" = "Package.swift" ] && return 0
+
+  # Read the first five lines
   line1=$(sed -n '1p' "$file")
   line2=$(sed -n '2p' "$file")
   line3=$(sed -n '3p' "$file")
   line4=$(sed -n '4p' "$file")
   line5=$(sed -n '5p' "$file")
 
-  local author date date_raw
+  # Attempt to extract author and date from existing header
+  author=$(echo "$line5" | sed -nE 's|^//  Created by (.+) on .*|\1|p')
+  date_raw=$(echo "$line5" | sed -nE 's|^//  Created by .+ on (.+)\.?$|\1|p')
 
-  if echo "$line5" | grep -Eq "^//  Created by .+ on [0-9]{4}\. [0-9]{2}\. [0-9]{2}\.\.$"; then
-    author=$(echo "$line5" | sed -E 's|^//  Created by (.+) on .+\.\.$|\1|' | sed 's/ *$//')
-    date=$(echo "$line5" | sed -E 's|^//  Created by .+ on (.+)\.\.$|\1|' | sed 's/ *$//')
-  else
-    author=$(echo "$line5" | sed -nE 's|^//  Created by (.+) on .+\.$|\1|p' | sed 's/ *$//')
-    date_raw=$(echo "$line5" | sed -nE 's|^//  Created by .+ on (.+)\.$|\1|p' | sed 's/ *$//')
+  [ -z "$author" ] && author="$DEFAULT_AUTHOR"
+  date=$(normalize_date "$date_raw")
+  [ -z "$date" ] && date=$(get_file_creation_date "$file")
 
-    [ -z "$author" ] && author="$DEFAULT_AUTHOR"
+  # Expected header lines
+  expected1="//"
+  expected2="//  $filename"
+  expected3="//  $PROJECT_NAME"
+  expected4="//"
+  expected5="//  Created by $author on $date.."
 
-    date=$(normalize_date "$date_raw")
-    if [ -z "$date" ]; then
-      log "Could not normalize date '$date_raw' in $file, using git date"
-      date=$(get_file_creation_date "$file")
+  if has_any_header "$file"; then
+    if is_header_present "$file"; then
+      return 0
     fi
-  fi
 
-  local expected1="//"
-  local expected2="//  $filename"
-  local expected3="//  $PROJECT_NAME"
-  local expected4="//"
-  local expected5="//  Created by $author on $date.."
-
-  if is_header_present "$file"; then
-    local modified=0
-
-    [ "$line1" != "$expected1" ] && { error "❌ $file - Line 1 incorrect"; line1="$expected1"; modified=1; }
-    [ "$line2" != "$expected2" ] && { error "❌ $file - Line 2 incorrect"; line2="$expected2"; modified=1; }
-    [ "$line3" != "$expected3" ] && { error "❌ $file - Line 3 incorrect"; line3="$expected3"; modified=1; }
-    [ "$line4" != "$expected4" ] && { error "❌ $file - Line 4 incorrect"; line4="$expected4"; modified=1; }
-    [ "$line5" != "$expected5" ] && { error "❌ $file - Line 5 incorrect"; line5="$expected5"; modified=1; }
-
-    if [ "$modified" -eq 1 ]; then
-      if [ "$FIX_MODE" -eq 1 ]; then
-        local tmpfile
-        tmpfile=$(mktemp)
-        printf "%s\n%s\n%s\n%s\n%s\n" \
-          "$line1" "$line2" "$line3" "$line4" "$line5" > "$tmpfile"
-        tail -n +6 "$file" >> "$tmpfile"
-        mv "$tmpfile" "$file"
-        log "Fixed: $file"
-      else
-        return 1
-      fi
-    fi
-  else
+    # Header exists but is invalid → replace
     if [ "$FIX_MODE" -eq 1 ]; then
-      local tmpfile
       tmpfile=$(mktemp)
-      printf "%s\n%s\n%s\n%s\n%s\n\n" \
-        "$expected1" "$expected2" "$expected3" "$expected4" "$expected5" > "$tmpfile"
+
+      echo "$expected1" > "$tmpfile"
+      echo "$expected2" >> "$tmpfile"
+      echo "$expected3" >> "$tmpfile"
+      echo "$expected4" >> "$tmpfile"
+      echo "$expected5" >> "$tmpfile"
+
+      tail -n +6 "$file" >> "$tmpfile"
+
+      mv "$tmpfile" "$file"
+      log "Fixed header in-place: $file"
+    else
+      error "❌ $file - Header is incorrect"
+      return 1
+    fi
+  else
+    # No header at all → prepend
+    if [ "$FIX_MODE" -eq 1 ]; then
+      tmpfile=$(mktemp)
+
+      echo "$expected1" > "$tmpfile"
+      echo "$expected2" >> "$tmpfile"
+      echo "$expected3" >> "$tmpfile"
+      echo "$expected4" >> "$tmpfile"
+      echo "$expected5" >> "$tmpfile"
+      echo "" >> "$tmpfile"
       cat "$file" >> "$tmpfile"
+
       mv "$tmpfile" "$file"
       log "Header added: $file"
     else
-      error "❌ $file - Header missing or malformed"
+      error "❌ $file - Header missing"
       return 1
     fi
   fi
-
-  return 0
 }
 
 # File exclusion handling

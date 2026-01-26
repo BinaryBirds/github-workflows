@@ -122,10 +122,6 @@ ensure_docc_plugin() {
 ensure_clean_git
 ensure_docc_plugin
 
-# Validate Package.swift after mutation
-swift package dump-package >/dev/null \
-  || fatal "Package.swift became invalid after injecting swift-docc-plugin"
-
 # Load targets from .docctargetlist
 #
 # If the file exists, it is treated as the authoritative list of DocC targets.

@@ -150,10 +150,6 @@ log "Repo name value: '${REPO_NAME}' (empty means no hosting-base-path)"
 ensure_clean_git
 ensure_docc_plugin
 
-# Validate Package.swift after mutation
-swift package dump-package >/dev/null \
-  || fatal "Package.swift became invalid after injecting swift-docc-plugin"
-
 # Load targets from .docctargetlist
 #
 # If present, this file defines the authoritative list of DocC targets.

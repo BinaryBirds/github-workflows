@@ -88,43 +88,38 @@ reset_git_after_analysis() {
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
-    # Idempotency: do nothing if already present
-    if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
+    # Already present → no-op
+    if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — skipping injection"
         return 0
     fi
 
-    # The injection marker is mandatory to guarantee a safe insertion point
+    # Marker must exist as a standalone line
     if ! grep -q "^[[:space:]]*${INJECT_MARKER}[[:space:]]*$" "$PACKAGE_FILE"; then
         fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
     fi
 
-    log "Injecting swift-docc-plugin at $INJECT_MARKER"
+    log "Injecting swift-docc-plugin at ${INJECT_MARKER}"
 
-    # Single-pass rewrite: insert dependency immediately after marker
+    # Inject exactly once at the marker
     awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
-    BEGIN {
-        injected = 0
-    }
-    {
-        print
-
-        # Trim whitespace and compare literally
-        line = $0
-        sub(/^[[:space:]]+/, "", line)
-        sub(/[[:space:]]+$/, "", line)
-
-        if (!injected && line == marker) {
-            print dep
-            injected = 1
+        BEGIN { injected = 0 }
+        {
+            print
+            if (!injected) {
+                line = $0
+                sub(/^[[:space:]]+/, "", line)
+                sub(/[[:space:]]+$/, "", line)
+                if (line == marker) {
+                    print dep
+                    injected = 1
+                }
+            }
         }
-    }
-    END {
-        if (!injected) {
-            exit 42
+        END {
+            if (!injected) exit 42
         }
-    }
-' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
+    ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
 

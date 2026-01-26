@@ -86,28 +86,53 @@ ensure_clean_git() {
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
-    if ! grep -q "[[:space:]]*$INJECT_MARKER" "$PACKAGE_FILE"; then
-        fatal "Injection marker '$INJECT_MARKER' not found in Package.swift"
-    fi
-
-    if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
+    # Already present → no-op
+    if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — skipping injection"
         return 0
     fi
 
-    log "Injecting swift-docc-plugin at $INJECT_MARKER"
+    # Marker must exist as a standalone line (whitespace allowed)
+    if ! awk -v marker="$INJECT_MARKER" '
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            if (line == marker) {
+                found = 1
+                exit 0
+            }
+        }
+        END { exit found ? 0 : 1 }
+    ' "$PACKAGE_FILE"; then
+        fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
+    fi
 
+    log "Injecting swift-docc-plugin at ${INJECT_MARKER}"
+
+    # Inject exactly once at the marker
     awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
+        BEGIN { injected = 0 }
         {
             print
-            if ($0 ~ marker) {
-                print dep
+            if (!injected) {
+                line = $0
+                sub(/^[[:space:]]+/, "", line)
+                sub(/[[:space:]]+$/, "", line)
+                if (line == marker) {
+                    print dep
+                    injected = 1
+                }
             }
+        }
+        END {
+            if (!injected) exit 42
         }
     ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
 
+    # Validate manifest after mutation
     swift package dump-package >/dev/null \
       || fatal "Package.swift became invalid after injecting swift-docc-plugin"
 }

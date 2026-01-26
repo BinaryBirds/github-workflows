@@ -72,42 +72,53 @@ reset_git_after_analysis() {
 
 # Ensures that swift-docc-plugin is available to SwiftPM.
 #
-# This function uses a fixed injection marker inside the package-level
-# dependencies section to safely and deterministically insert the
-# swift-docc-plugin dependency.
-#
-# Contract:
-# - Package.swift MUST contain a package-level dependencies section
-# - Inside dependencies: [ ... ] there MUST be:
-#
-#     // [docc-plugin-placeholder]
-#
-# Important:
-# - This function mutates Package.swift in place
-# - The caller MUST ensure the git working tree is clean
+# This function injects the dependency using a fixed marker
+# to avoid touching target-level dependencies or relying on
+# fragile text matching.
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
-    # The injection marker is mandatory to guarantee a safe insertion point
-    if ! grep -q "[[:space:]]*$INJECT_MARKER" "$PACKAGE_FILE"; then
-        fatal "Injection marker '$INJECT_MARKER' not found in Package.swift"
-    fi
-
-    # Idempotency: do nothing if already present
-    if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
+    # Already present → no-op
+    if grep -q 'github.com/apple/swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — skipping injection"
         return 0
     fi
 
-    log "Injecting swift-docc-plugin at $INJECT_MARKER"
+    # Marker must exist as a standalone line (whitespace allowed)
+    if ! awk -v marker="$INJECT_MARKER" '
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            if (line == marker) {
+                found = 1
+                exit 0
+            }
+        }
+        END { exit found ? 0 : 1 }
+    ' "$PACKAGE_FILE"; then
+        fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
+    fi
 
-    # Single-pass rewrite: insert dependency immediately after marker
+    log "Injecting swift-docc-plugin at ${INJECT_MARKER}"
+
+    # Inject exactly once at the marker
     awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
+        BEGIN { injected = 0 }
         {
             print
-            if ($0 ~ marker) {
-                print dep
+            if (!injected) {
+                line = $0
+                sub(/^[[:space:]]+/, "", line)
+                sub(/[[:space:]]+$/, "", line)
+                if (line == marker) {
+                    print dep
+                    injected = 1
+                }
             }
+        }
+        END {
+            if (!injected) exit 42
         }
     ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
 

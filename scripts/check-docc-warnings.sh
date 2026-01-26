@@ -72,19 +72,9 @@ reset_git_after_analysis() {
 
 # Ensures that swift-docc-plugin is available to SwiftPM.
 #
-# This function uses a fixed injection marker inside the package-level
-# dependencies section to safely and deterministically insert the
-# swift-docc-plugin dependency.
-#
-# Contract:
-# - Package.swift MUST contain a package-level dependencies section
-# - Inside dependencies: [ ... ] there MUST be:
-#
-#     // [docc-plugin-placeholder]
-#
-# Important:
-# - This function mutates Package.swift in place
-# - The caller MUST ensure the git working tree is clean
+# This function injects the dependency using a fixed marker
+# to avoid touching target-level dependencies or relying on
+# fragile text matching.
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 

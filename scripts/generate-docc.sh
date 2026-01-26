@@ -104,14 +104,17 @@ ensure_docc_plugin() {
     {
         print
 
-        # Inject only once, and only on the exact placeholder line
-        if (!injected && $0 ~ "^[[:space:]]*" marker "[[:space:]]*$") {
+        # Trim whitespace and compare literally
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        sub(/[[:space:]]+$/, "", line)
+
+        if (!injected && line == marker) {
             print dep
             injected = 1
         }
     }
     END {
-        # Fail if the placeholder was never found
         if (!injected) {
             exit 42
         }

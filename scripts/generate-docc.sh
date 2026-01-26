@@ -86,17 +86,20 @@ ensure_clean_git() {
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
-    if ! grep -q "[[:space:]]*$INJECT_MARKER" "$PACKAGE_FILE"; then
-        fatal "Injection marker '$INJECT_MARKER' not found in Package.swift"
-    fi
-
+    # Idempotency: do nothing if already present
     if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — skipping injection"
         return 0
     fi
 
+    # The injection marker is mandatory to guarantee a safe insertion point
+    if ! grep -q "^[[:space:]]*${INJECT_MARKER}[[:space:]]*$" "$PACKAGE_FILE"; then
+        fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
+    fi
+
     log "Injecting swift-docc-plugin at $INJECT_MARKER"
 
+    # Single-pass rewrite: insert dependency immediately after marker
     awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
     BEGIN {
         injected = 0
@@ -123,6 +126,7 @@ ensure_docc_plugin() {
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
 
+    # Validate manifest after mutation
     swift package dump-package >/dev/null \
       || fatal "Package.swift became invalid after injecting swift-docc-plugin"
 }

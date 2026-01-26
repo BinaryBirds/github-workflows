@@ -88,15 +88,15 @@ reset_git_after_analysis() {
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
-    # The injection marker is mandatory to guarantee a safe insertion point
-    if ! grep -q "[[:space:]]*$INJECT_MARKER" "$PACKAGE_FILE"; then
-        fatal "Injection marker '$INJECT_MARKER' not found in Package.swift"
-    fi
-
     # Idempotency: do nothing if already present
     if grep -q 'swift-docc-plugin' "$PACKAGE_FILE"; then
         log "swift-docc-plugin already present — skipping injection"
         return 0
+    fi
+
+    # The injection marker is mandatory to guarantee a safe insertion point
+    if ! grep -q "^[[:space:]]*${INJECT_MARKER}[[:space:]]*$" "$PACKAGE_FILE"; then
+        fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
     fi
 
     log "Injecting swift-docc-plugin at $INJECT_MARKER"

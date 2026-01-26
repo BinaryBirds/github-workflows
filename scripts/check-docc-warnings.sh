@@ -103,13 +103,25 @@ ensure_docc_plugin() {
 
     # Single-pass rewrite: insert dependency immediately after marker
     awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
-        {
-            print
-            if ($0 ~ marker) {
-                print dep
-            }
+    BEGIN {
+        injected = 0
+    }
+    {
+        print
+
+        # Inject only once, and only on the exact placeholder line
+        if (!injected && $0 ~ "^[[:space:]]*" marker "[[:space:]]*$") {
+            print dep
+            injected = 1
         }
-    ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
+    }
+    END {
+        # Fail if the placeholder was never found
+        if (!injected) {
+            exit 42
+        }
+    }
+' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
 

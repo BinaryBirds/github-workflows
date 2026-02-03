@@ -72,7 +72,7 @@ get_file_creation_date() {
 
 # Find the line number of the "Created by" line (header anchor)
 find_header_line() {
-  grep -nE '^//  Created by .+ on [0-9]{4}\. [0-9]{2}\. [0-9]{2}\.$' "$1" \
+  grep -nE '^//  Created by .+ on [0-9]{4}\. [0-9]{2}\. [0-9]{2}\.{1,2}$' "$1" \
     | head -n1 \
     | cut -d: -f1
 }
@@ -89,9 +89,17 @@ is_header_valid_at_line() {
     NR==2 && $0=="//  " f {next}
     NR==3 && $0=="//  " p {next}
     NR==4 && $0=="//" {next}
-    NR==5 && $0 ~ "^//  Created by .+ on [0-9]{4}\\. [0-9]{2}\\. [0-9]{2}\\.$" {exit 0}
+    NR==5 && $0 ~ "^//  Created by .+ on [0-9]{4}\\. [0-9]{2}\\. [0-9]{2}\\.\\.{0,1}$" {exit 0}
     {exit 1}
   '
+}
+
+extract_author_from_header_line() {
+  sed -E 's|^//  Created by (.+) on [0-9]{4}\. [0-9]{2}\. [0-9]{2}\.{1,2}$|\1|'
+}
+
+extract_date_from_header_line() {
+  sed -E 's|^//  Created by .+ on ([0-9]{4}\. [0-9]{2}\. [0-9]{2})\.{1,2}$|\1|'
 }
 
 # Replace an invalid header block in place
@@ -101,18 +109,32 @@ replace_header_at_line() {
   local tmpfile
   tmpfile=$(mktemp)
 
+  # Extract original author and date
+  local header_line
+  header_line=$(sed -n "${line}p" "$file")
+
+  local author
+  author=$(printf '%s\n' "$header_line" | extract_author_from_header_line)
+
+  local date
+  date=$(printf '%s\n' "$header_line" | extract_date_from_header_line)
+
+  # Safety fallback (should never happen)
+  [ -z "$author" ] && author="$DEFAULT_AUTHOR"
+  [ -z "$date" ] && date="$(get_file_creation_date "$file")"
+
   # Remove the old header block
   local start=$((line-4))
   [ "$start" -lt 1 ] && start=1
   sed "${start},${line}d" "$file" > "$tmpfile"
 
-  # Rebuild file WITHOUT adding an extra blank line
+  # Rebuild file WITHOUT adding extra blank lines
   {
     echo "//"
     echo "//  $(basename "$file")"
     echo "//  $PROJECT_NAME"
     echo "//"
-    echo "//  Created by $DEFAULT_AUTHOR on $(get_file_creation_date "$file")."
+    echo "//  Created by $author on $date."
     cat "$tmpfile"
   } > "$tmpfile.fixed"
 

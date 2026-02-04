@@ -72,8 +72,8 @@ jobs:
           persist-credentials: false
       - name: Install curl + jq
         run: |
-          apt-get update -y
-          apt-get install -y curl jq
+          sudo apt-get update -y
+          sudo apt-get install -y curl jq
       - name: Run Swift package validation
         run: |
           curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/fix/fix-headers/scripts/check-swift-package.sh | bash

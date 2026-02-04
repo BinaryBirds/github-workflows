@@ -23,6 +23,10 @@ on:
         type: boolean
         description: "Runs DocC analysis and fails on warnings. Defaults to false."
         default: false
+      swift_package_validation_enabled:
+        type: boolean
+        description: "Runs Swift package validation script (structure, settings, files). Defaults to false."
+        default: false
     secrets:
       SSH_PRIVATE_KEY:
         required: false
@@ -56,6 +60,23 @@ jobs:
           persist-credentials: false
       - name: Run swift headers check
         run: curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-headers.sh | bash
+
+  swift_package_validation:
+    name: Swift package validation
+    if: ${{ inputs.swift_package_validation_enabled }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install curl + jq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl jq
+      - name: Run Swift package validation
+        run: |
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-package.sh | bash
 
   docc_warnings_check:
     name: DocC warnings check

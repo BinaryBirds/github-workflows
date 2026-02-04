@@ -63,7 +63,7 @@ lint:
 format:
 	curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix 
 
-project:
+package:
 	curl -s $(baseUrl)/check-swift-package.sh | bash
 
 check: symlinks language deps lint docc-warnings headers

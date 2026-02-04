@@ -27,6 +27,7 @@ This workflow provides configurable, robust checks and testing:
 * **Optional Swift Headers Check**: Validates Swift source file headers using a strict 5-line format and respects `.swiftheaderignore`.
 * **Optional DocC Warnings Check**: Runs DocC analysis with `--warnings-as-errors` and fails on warnings.
 * **Optional Swift Test Execution**: Runs tests using **`.build` caching** for efficiency.
+* **Optional Swift Package Validation**: Validates Swift package structure, settings, and conventions to ensure consistency.
 * **Multi-Version Support**: Tests across multiple Swift versions, configurable via input (defaulting to `["6.0", "6.1"]`).
 * **SSH Support**: Includes steps to set up **SSH credentials** (via the `SSH_PRIVATE_KEY` secret) for projects relying on private Git dependencies.
 
@@ -39,6 +40,7 @@ This workflow provides configurable, robust checks and testing:
 | `docc_warnings_check_enabled` | Enables DocC warnings check | `false` |
 | `run_tests_with_cache_enabled` | Enables Swift tests with `.build` cache | `false` |
 | `run_tests_swift_versions` | Swift versions to test | `["6.1","6.2"]` |
+| `swift_package_validation_enabled` | Runs Swift package validation in the repository. | `false` |
 
 #### Example Usage (Caller Repository)
 
@@ -52,6 +54,7 @@ jobs:
       docc_warnings_check_enabled: true
       run_tests_with_cache_enabled: true
       run_tests_swift_versions: '["6.1","6.2"]'
+      swift_package_validation_enabled: true
 ```
 
 ### 2. DocC Deploy Workflow (`docc_deploy.yml`)
@@ -596,4 +599,38 @@ _Fix formatting:_
 
 ```sh
 curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix
+```
+
+---
+
+### check-swift-package.sh
+
+#### Purpose
+
+Validates Swift package structure and configuration to enforce project-wide conventions.
+
+#### Behavior
+
+* Verifies Package.swift presence and Swift tools version
+* Ensures Swift tools version is 6.1 or newer
+* Requires defaultSwiftSettings usage on all targets
+* Enforces presence of the NonisolatedNonsendingByDefault Swift 6 concurrency feature
+* Validates top-level dependencies section and DocC placeholder
+* Checks required directory structure (Sources/, Tests/)
+* Ensures required repository files exist
+* Verifies LICENSE contains the current year
+* Aggregates all violations and fails once at the end
+
+#### Parameters
+
+_None_
+
+#### Ignore files
+
+_None_
+
+#### Raw curl examples
+
+```sh
+curl -s $(baseUrl)/check-swift-package.sh | bash
 ```

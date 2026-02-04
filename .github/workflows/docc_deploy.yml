@@ -41,7 +41,6 @@ jobs:
         with:
           path: docs
 
-
   deploy:
     name: Deploy DocC to GitHub Pages
     needs: generate-docc

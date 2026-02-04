@@ -76,7 +76,7 @@ jobs:
           sudo apt-get install -y curl jq
       - name: Run Swift package validation
         run: |
-          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/fix/fix-headers/scripts/check-swift-package.sh | bash
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-package.sh | bash
 
   docc_warnings_check:
     name: DocC warnings check

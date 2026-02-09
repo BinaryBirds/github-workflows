@@ -33,4 +33,4 @@ jobs:
 
       - name: Run check API breakage
         run: |
-          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/breakage-workflow/scripts/check-api-breakage.sh | bash
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-api-breakage.sh | bash

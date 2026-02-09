@@ -26,6 +26,9 @@ jobs:
           apt-get update -y
           apt-get install -y curl
 
+      - name: Mark repo as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Run check API breakage
         run: |
           curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/feature/breakage-workflow/scripts/check-api-breakage.sh | bash

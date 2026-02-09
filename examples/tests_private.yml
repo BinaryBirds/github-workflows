@@ -7,6 +7,10 @@ on:
 
 jobs:
 
+  api_breakage:
+    name: Check API breakage
+    uses: BinaryBirds/github-workflows/.github/workflows/api_breakage.yml@feature/breakage-workflow
+
   bb_checks:
     name: BB Checks
     uses: BinaryBirds/github-workflows/.github/workflows/extra_soundness.yml@main

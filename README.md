@@ -62,7 +62,7 @@ jobs:
 This workflow handles the generation and deployment of DocC documentation:
 
 * **Builds DocC Documentation**: Uses a Swift 6.2 Docker image to build the documentation.
-* **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v4` to publish the results.
+* **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v6` to publish the results.
 * **Target Configuration**: Respects `.docctargetlist` if present.
 
 #### Example Usage (Caller Repository)
@@ -75,6 +75,22 @@ jobs:
       contents: read
       pages: write
       id-token: write
+```
+
+### 3. API Breaking Changes Workflow (`api_breakage.yml`)
+
+This workflow checks for API breaking changes in the repository:
+
+* Runs API Breakage Checks: Executes the Binary Birds API breakage checking script.
+* Swift-based Environment: Runs inside a swift:latest Docker container.
+* Full Git History Available: Checks out the repository with complete history for accurate comparison.
+
+#### Example Usage (Caller Repository)
+
+```yaml
+jobs:
+  check-api-breakage:
+    uses: BinaryBirds/github-workflows/.github/workflows/api_breakage.yml@main
 ```
 
 -----

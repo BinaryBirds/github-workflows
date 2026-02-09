@@ -1,0 +1,31 @@
+name: API breaking changes
+
+on:
+  workflow_call:
+    inputs: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-api-breakage
+  cancel-in-progress: true
+
+jobs:
+
+  check-api-breakage:
+    name: Check API breakage
+    runs-on: ubuntu-latest
+
+    container:
+      image: swift:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      
+      - name: Install curl
+        run: |
+          apt-get update -y
+          apt-get install -y curl
+
+      - name: Generate DocC documentation
+        run: |
+          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-api-breakage.sh | bash

@@ -10,9 +10,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-docc
+  group: ${{ github.workflow }}-${{ github.ref }}-docc-deploy
   cancel-in-progress: true
-
 
 jobs:
 
@@ -25,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install curl + jq
         run: |

@@ -5,12 +5,15 @@
 
 set -euo pipefail
 
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 if ! command -v actionlint >/dev/null 2>&1; then
-  fatal "actionlint is not installed. Install it first (e.g. 'brew install actionlint' or 'apt-get install actionlint')."
+    fatal "actionlint is not installed. Install it first (e.g. 'brew install actionlint' or 'apt-get install actionlint')."
 fi
 
 REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || pwd)"

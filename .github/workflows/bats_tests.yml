@@ -25,8 +25,11 @@ jobs:
 
       - name: Install actionlint
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y actionlint
+          ACTIONLINT_VERSION="1.7.7"
+          curl -sSfL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz
+          sudo mv actionlint /usr/local/bin/actionlint
+          actionlint -version
 
       - name: Run actionlint
         run: actionlint
@@ -46,13 +49,23 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y shellcheck
 
+      - name: Run shellcheck
+        run: shellcheck scripts/*.sh
+
+  shfmt:
+    name: shfmt
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
       - name: Install shfmt
         run: |
           sudo apt-get update -y
           sudo apt-get install -y shfmt
-
-      - name: Run shellcheck
-        run: shellcheck scripts/*.sh
 
       - name: Run shfmt check
         run: git ls-files '*.sh' '*.bash' '*.bats' | xargs shfmt -d -i 4 -ci
@@ -61,6 +74,7 @@ jobs:
     name: Run Bats suite
     needs:
       - shellcheck
+      - shfmt
       - actionlint
     runs-on: ${{ matrix.os }}
     strategy:

@@ -14,11 +14,11 @@ concurrency:
 
 jobs:
   actionlint:
-    name: Actionlint
+    name: Validate GitHub Workflows (actionlint)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -31,15 +31,15 @@ jobs:
           sudo mv actionlint /usr/local/bin/actionlint
           actionlint -version
 
-      - name: Run actionlint
+      - name: Run Workflow Linter
         run: actionlint
 
   shellcheck:
-    name: ShellCheck
+    name: Lint Shell Scripts (shellcheck)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -49,15 +49,15 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y shellcheck
 
-      - name: Run shellcheck
+      - name: Run Shell Linter
         run: shellcheck scripts/*.sh
 
   shfmt:
-    name: shfmt
+    name: Check Shell Formatting (shfmt)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -67,11 +67,11 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y shfmt
 
-      - name: Run shfmt check
+      - name: Run Shell Formatter Check
         run: git ls-files '*.sh' '*.bash' '*.bats' | xargs shfmt -d -i 4 -ci
 
   bats:
-    name: Run Bats suite
+    name: Run Shell Test Suite (bats)
     needs:
       - shellcheck
       - shfmt
@@ -85,7 +85,7 @@ jobs:
           - macos-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -100,5 +100,5 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install bats-core
 
-      - name: Run Bats tests
+      - name: Run bats Test Suite
         run: bats --recursive tests/bats

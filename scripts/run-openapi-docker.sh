@@ -38,6 +38,26 @@ PORT="8888:80"
 # If a file is provided, its parent directory will be mounted.
 OPENAPI_PATH="openapi"
 
+resolve_repo_root() {
+    # Prefer git root for local execution and subdirectory calls.
+    if root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+        printf '%s\n' "${root}"
+        return 0
+    fi
+
+    # Fallback for checked-out scripts under a conventional ./scripts layout.
+    if [ -d "${SCRIPT_DIR}/../.git" ]; then
+        (
+            cd -- "${SCRIPT_DIR}/.."
+            pwd
+        )
+        return 0
+    fi
+
+    # Last resort for piped execution (for example: curl | bash).
+    pwd
+}
+
 usage() {
     cat >&2 <<EOF
 Usage: $0 [-n name] [-p host_port:container_port] [-f openapi_path]
@@ -74,8 +94,9 @@ if [[ "${OPENAPI_PATH}" = /* ]]; then
     # Absolute paths are used as-is.
     OPENAPI_ABS_PATH="${OPENAPI_PATH}"
 else
-    # Relative paths are resolved from this script directory.
-    OPENAPI_ABS_PATH="${SCRIPT_DIR}/${OPENAPI_PATH}"
+    # Relative paths are resolved from repository root.
+    REPO_ROOT="$(resolve_repo_root)"
+    OPENAPI_ABS_PATH="${REPO_ROOT}/${OPENAPI_PATH}"
 fi
 
 # Allow extension fallback between .yml and .yaml.

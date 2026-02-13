@@ -123,3 +123,25 @@ YAML
     docker_call="$(cat "$DOCKER_LOG")"
     [[ "$docker_call" == *"zap-api-scan.py"* ]]
 }
+
+@test "check-openapi-validation resolves default openapi path from repo root when run from subdirectory" {
+    repo="$(make_temp_repo)"
+    copy_openapi_scripts_into_repo "$repo"
+    install_docker_stub "$repo"
+
+    mkdir -p "$repo/openapi" "$repo/subdir"
+    cat >"$repo/openapi/openapi.yaml" <<'YAML'
+openapi: 3.0.0
+info:
+  title: Root API
+  version: 1.0.0
+paths: {}
+YAML
+
+    export DOCKER_LOG="$repo/docker.log"
+    run bash -c "cd '$repo/subdir' && bash ../scripts/check-openapi-validation.sh"
+
+    [ "$status" -eq 0 ]
+    docker_call="$(cat "$DOCKER_LOG")"
+    [[ "$docker_call" == *"/openapi/openapi.yaml:/openapi.yaml"* ]]
+}

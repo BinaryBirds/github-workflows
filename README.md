@@ -263,7 +263,7 @@ Runs a security scan of an OpenAPI specification using OWASP ZAP.
 
 * Executes inside Docker
 * Accepts an OpenAPI file or directory (default: `openapi`)
-* Relative `-f` paths are resolved from the script location
+* Relative `-f` paths are resolved from the git repository root (fallback: current working directory)
 * For file paths, supports `.yml`/`.yaml` extension fallback
 * Skips execution if no OpenAPI specification can be resolved
 
@@ -297,7 +297,7 @@ Validates an OpenAPI specification for schema correctness.
 
 * Runs the OpenAPI validator in Docker
 * Accepts an OpenAPI file or directory (default: `openapi`)
-* Relative `-f` paths are resolved from the script location
+* Relative `-f` paths are resolved from the git repository root (fallback: current working directory)
 * For file paths, supports `.yml`/`.yaml` extension fallback
 * Skips execution if no OpenAPI specification can be resolved
 
@@ -317,6 +317,11 @@ curl -s $(baseUrl)/check-openapi-validation.sh | bash
 
 ```sh
 curl -s $(baseUrl)/check-openapi-validation.sh | bash -s -- -f openapi/openapi.yaml
+```
+
+```sh
+# Monorepo/nested project example (path relative to git root)
+curl -s $(baseUrl)/check-openapi-validation.sh | bash -s -- -f mail-examples/mail-example-openapi/openapi/openapi.yaml
 ```
 
 ---
@@ -586,7 +591,7 @@ Serves OpenAPI documentation locally using Docker.
 #### Behavior
 
 * Accepts an OpenAPI file or directory (default: `openapi`)
-* Relative `-f` paths are resolved from the script location
+* Relative `-f` paths are resolved from the git repository root (fallback: current working directory)
 * If a file is provided, mounts its parent directory
 * For file paths, supports `.yml`/`.yaml` extension fallback
 * Runs Nginx in the foreground

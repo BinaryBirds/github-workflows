@@ -167,3 +167,25 @@ YAML
     docker_call="$(cat "$DOCKER_LOG")"
     [[ "$docker_call" == *"/openapi/openapi.yaml:/openapi.yaml"* ]]
 }
+
+@test "check-openapi-validation supports piped execution with -f path relative to git root" {
+    repo="$(make_temp_repo)"
+    copy_openapi_scripts_into_repo "$repo"
+    install_docker_stub "$repo"
+
+    mkdir -p "$repo/mail-examples/mail-example-openapi/openapi"
+    cat >"$repo/mail-examples/mail-example-openapi/openapi/openapi.yaml" <<'YAML'
+openapi: 3.0.0
+info:
+  title: Nested API
+  version: 1.0.0
+paths: {}
+YAML
+
+    export DOCKER_LOG="$repo/docker.log"
+    run bash -c "cd '$repo' && cat scripts/check-openapi-validation.sh | bash -s -- -f mail-examples/mail-example-openapi/openapi/openapi.yaml"
+
+    [ "$status" -eq 0 ]
+    docker_call="$(cat "$DOCKER_LOG")"
+    [[ "$docker_call" == *"/mail-examples/mail-example-openapi/openapi/openapi.yaml:/openapi.yaml"* ]]
+}

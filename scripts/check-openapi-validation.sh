@@ -76,9 +76,18 @@ if [[ "${OPENAPI_PATH}" = /* ]]; then
     # Absolute paths are used as-is.
     OPENAPI_ABS_PATH="${OPENAPI_PATH}"
 else
-    # Relative paths are resolved from repository root.
+    # Relative paths prefer repository root, then current working directory.
     REPO_ROOT="$(resolve_repo_root)"
-    OPENAPI_ABS_PATH="${REPO_ROOT}/${OPENAPI_PATH}"
+    REPO_OPENAPI_PATH="${REPO_ROOT}/${OPENAPI_PATH}"
+    CWD_OPENAPI_PATH="$(pwd)/${OPENAPI_PATH}"
+
+    if [ -e "${REPO_OPENAPI_PATH}" ]; then
+        OPENAPI_ABS_PATH="${REPO_OPENAPI_PATH}"
+    elif [ -e "${CWD_OPENAPI_PATH}" ]; then
+        OPENAPI_ABS_PATH="${CWD_OPENAPI_PATH}"
+    else
+        OPENAPI_ABS_PATH="${REPO_OPENAPI_PATH}"
+    fi
 fi
 
 # Allow extension fallback between .yml and .yaml.

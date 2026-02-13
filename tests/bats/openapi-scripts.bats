@@ -189,3 +189,29 @@ YAML
     docker_call="$(cat "$DOCKER_LOG")"
     [[ "$docker_call" == *"/mail-examples/mail-example-openapi/openapi/openapi.yaml:/openapi.yaml"* ]]
 }
+
+@test "check-openapi-validation default path works for copied script in nested project scripts folder" {
+    repo="$(make_temp_repo)"
+    install_docker_stub "$repo"
+
+    mkdir -p "$repo/mail-examples/mail-example-openapi/scripts"
+    mkdir -p "$repo/mail-examples/mail-example-openapi/openapi"
+    cp "$PROJECT_ROOT/scripts/check-openapi-validation.sh" \
+        "$repo/mail-examples/mail-example-openapi/scripts/check-openapi-validation.sh"
+    chmod +x "$repo/mail-examples/mail-example-openapi/scripts/check-openapi-validation.sh"
+
+    cat >"$repo/mail-examples/mail-example-openapi/openapi/openapi.yaml" <<'YAML'
+openapi: 3.0.0
+info:
+  title: Nested Local API
+  version: 1.0.0
+paths: {}
+YAML
+
+    export DOCKER_LOG="$repo/docker.log"
+    run bash -c "cd '$repo/mail-examples/mail-example-openapi' && bash ./scripts/check-openapi-validation.sh"
+
+    [ "$status" -eq 0 ]
+    docker_call="$(cat "$DOCKER_LOG")"
+    [[ "$docker_call" == *"/mail-example-openapi/openapi/openapi.yaml:/openapi.yaml"* ]]
+}

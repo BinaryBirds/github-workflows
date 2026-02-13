@@ -56,6 +56,9 @@ run_checker() {
   diff -u \
     "$REPO_ROOT/tests/fixtures/legacy_double_dot_fixed.swift" \
     "$TMPDIR/Address.swift"
+
+  run run_checker
+  [ "$status" -eq 0 ]
 }
 
 @test "wrong project name is fixed but author and date are preserved" {
@@ -70,6 +73,20 @@ run_checker() {
   diff -u \
     "$REPO_ROOT/tests/fixtures/wrong_project_fixed.swift" \
     "$TMPDIR/WrongProject.swift"
+
+  run run_checker
+  [ "$status" -eq 0 ]
+}
+
+@test "wrong project name fails in check mode" {
+  cp "$REPO_ROOT/tests/fixtures/wrong_project.swift" \
+     "$TMPDIR/WrongProject.swift"
+
+  init_git
+
+  run run_checker
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Header is invalid"* ]]
 }
 
 @test "missing header fails in check mode" {
@@ -80,6 +97,24 @@ run_checker() {
 
   run run_checker
   [ "$status" -ne 0 ]
+}
+
+@test "missing header with leading random comments fails in check mode" {
+  cat > "$TMPDIR/Foo.swift" <<'EOF2'
+// random comment one
+// random comment two
+import Foundation
+
+struct Foo {
+    let value: Int
+}
+EOF2
+
+  init_git
+
+  run run_checker
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Header missing"* ]]
 }
 
 @test "missing header is inserted in fix mode" {
@@ -94,6 +129,35 @@ run_checker() {
   diff -u \
     "$REPO_ROOT/tests/fixtures/missing_header_fixed.swift" \
     "$TMPDIR/Foo.swift"
+
+  run run_checker
+  [ "$status" -eq 0 ]
+}
+
+@test "missing header with leading random comments is fixed in fix mode" {
+  cat > "$TMPDIR/Foo.swift" <<'EOF2'
+// random comment one
+// random comment two
+import Foundation
+
+struct Foo {
+    let value: Int
+}
+EOF2
+
+  init_git
+
+  run run_checker --fix
+  [ "$status" -eq 0 ]
+
+  content="$(cat "$TMPDIR/Foo.swift")"
+  [[ "$content" == *"//  Foo.swift"* ]]
+  [[ "$content" == *"//  Created by Binary Birds on"* ]]
+  [[ "$content" == *"// random comment one"* ]]
+  [[ "$content" == *"// random comment two"* ]]
+
+  run run_checker
+  [ "$status" -eq 0 ]
 }
 
 @test "fix mode is idempotent" {
@@ -192,6 +256,9 @@ EOF2
   [[ "$content" == *"//  Preserve.swift"* ]]
   [[ "$content" == *"//  HeaderProject"* ]]
   [[ "$content" == *"//  Created by Alice Doe on 2026. 02. 12."* ]]
+
+  run run_checker
+  [ "$status" -eq 0 ]
 }
 
 @test ".swiftheaderignore supports comments and blank lines" {

@@ -23,9 +23,12 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent CI and local logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Determine swift-format command mode
 #
@@ -33,9 +36,9 @@ fatal() { error "$@"; exit 1; }
 # If --fix is provided, switch to in-place formatting.
 FORMAT_COMMAND=(lint --strict)
 for arg in "$@"; do
-  if [ "$arg" == "--fix" ]; then
-    FORMAT_COMMAND=(format --in-place)
-  fi
+    if [ "$arg" == "--fix" ]; then
+        FORMAT_COMMAND=(format --in-place)
+    fi
 done
 
 # Base URL for shared swift-format configuration files
@@ -67,15 +70,15 @@ fi
 # - Runs formatting in parallel for performance
 #
 # The exit code is captured explicitly to allow controlled error handling.
-tr '\n' '\0' < .swiftformatignore \
-| xargs -0 -I% printf '":(exclude)%" ' \
-| xargs git ls-files -z '*.swift' \
-| xargs -0 swift format "${FORMAT_COMMAND[@]}" --parallel \
-&& SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
+tr '\n' '\0' <.swiftformatignore |
+    xargs -0 -I% printf '":(exclude)%" ' |
+    xargs git ls-files -z '*.swift' |
+    xargs -0 swift format "${FORMAT_COMMAND[@]}" --parallel &&
+    SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
 
 # If swift-format failed, print a helpful error message
 if [ "${SWIFT_FORMAT_RC}" -ne 0 ]; then
-  fatal "❌ Running swift-format produced errors.
+    fatal "❌ Running swift-format produced errors.
   To fix:
     % run make format
   "

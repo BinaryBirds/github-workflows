@@ -1,0 +1,104 @@
+name: Bats Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-bats-tests
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    name: Validate GitHub Workflows (actionlint)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          ACTIONLINT_VERSION="1.7.7"
+          curl -sSfL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz
+          sudo mv actionlint /usr/local/bin/actionlint
+          actionlint -version
+
+      - name: Run Workflow Linter
+        run: actionlint
+
+  shellcheck:
+    name: Lint Shell Scripts (shellcheck)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck
+
+      - name: Run Shell Linter
+        run: shellcheck scripts/*.sh
+
+  shfmt:
+    name: Check Shell Formatting (shfmt)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install shfmt
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shfmt
+
+      - name: Run Shell Formatter Check
+        run: git ls-files '*.sh' '*.bash' '*.bats' | xargs shfmt -d -i 4 -ci
+
+  bats:
+    name: Run Shell Test Suite (bats)
+    needs:
+      - shellcheck
+      - shfmt
+      - actionlint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install bats (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y bats
+
+      - name: Install bats (macOS)
+        if: runner.os == 'macOS'
+        run: brew install bats-core
+
+      - name: Run bats Test Suite
+        run: bats --recursive tests/bats

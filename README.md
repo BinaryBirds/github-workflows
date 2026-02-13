@@ -146,8 +146,8 @@ Detects source- and binary-level API breaking changes in Swift packages to preve
 #### Behavior
 
 * Uses `swift package diagnose-api-breaking-changes`
-* Pull requests: compares against the PR base branch
-* Other contexts: compares against the latest Git tag
+* Pull requests: fetches `${GITHUB_BASE_REF}` into a local `pull-base-ref` and compares against that ref
+* Other contexts: fetches tags and compares against the latest Git tag
 * If no tags exist, exits successfully with a warning
 * Fails when breaking changes are detected
 
@@ -233,7 +233,7 @@ Prevents accidental usage of local Swift package dependencies.
 
 #### Behavior
 
-* Scans all tracked `Package.swift` files
+* Scans git-tracked `Package.swift` files only (ignores untracked files)
 * Detects `.package(path:)`
 * Fails immediately on detection
 
@@ -262,20 +262,27 @@ Runs a security scan of an OpenAPI specification using OWASP ZAP.
 #### Behavior
 
 * Executes inside Docker
-* Skips execution if `openapi/` directory does not exist
+* Accepts an OpenAPI file or directory (default: `openapi`)
+* Relative `-f` paths are resolved from the script location
+* For file paths, supports `.yml`/`.yaml` extension fallback
+* Skips execution if no OpenAPI specification can be resolved
 
 #### Parameters
 
-_None_
+* `-f <path>` – OpenAPI file or directory path
 
 #### Ignore files
 
 _None_
 
-#### Raw curl example
+#### Raw curl examples
 
 ```sh
 curl -s $(baseUrl)/check-openapi-security.sh | bash
+```
+
+```sh
+curl -s $(baseUrl)/check-openapi-security.sh | bash -s -- -f openapi/openapi.yml
 ```
 
 ---
@@ -289,20 +296,27 @@ Validates an OpenAPI specification for schema correctness.
 #### Behavior
 
 * Runs the OpenAPI validator in Docker
-* Skips execution if `openapi/` directory does not exist
+* Accepts an OpenAPI file or directory (default: `openapi`)
+* Relative `-f` paths are resolved from the script location
+* For file paths, supports `.yml`/`.yaml` extension fallback
+* Skips execution if no OpenAPI specification can be resolved
 
 #### Parameters
 
-_None_
+* `-f <path>` – OpenAPI file or directory path
 
 #### Ignore files
 
 _None_
 
-#### Raw curl example
+#### Raw curl examples
 
 ```sh
 curl -s $(baseUrl)/check-openapi-validation.sh | bash
+```
+
+```sh
+curl -s $(baseUrl)/check-openapi-validation.sh | bash -s -- -f openapi/openapi.yaml
 ```
 
 ---
@@ -318,6 +332,10 @@ Ensures Swift source files contain a consistent, standardized header.
 * Enforces a strict 5-line header format
 * Can optionally insert or update headers in-place
 * Processes only git-tracked Swift files
+* Skips `Package.swift` explicitly
+* Accepts `Created by ... on YYYY. MM. DD.` and legacy `..` suffix
+* In `--fix` mode, normalizes legacy `..` to `.`
+* When repairing malformed headers, preserves extracted author and date when possible
 
 #### Parameters
 
@@ -326,7 +344,7 @@ Ensures Swift source files contain a consistent, standardized header.
 
 #### Ignore files
 
-* `.swiftheaderignore` – excludes paths from header validation
+* `.swiftheaderignore` – excludes paths from header validation (replaces default exclusions when present)
 
 #### Raw curl examples
 
@@ -354,6 +372,7 @@ Detects discouraged or outdated terminology to promote inclusive language.
 
 * Case-insensitive, whole-word matching
 * Scans git-tracked files only
+* Lines containing `ignore-unacceptable-language` are excluded from failures
 
 #### Parameters
 
@@ -379,9 +398,11 @@ Generates a CONTRIBUTORS.txt file from git commit history.
 
 #### Behavior
 
-* Uses `git shortlog`
+* Uses `git shortlog -es HEAD`
 * Respects `.mailmap`
 * Overwrites the file deterministically
+* Writes to repository root even when run from a subdirectory
+* If the repository has no commits, exits successfully and does not create `CONTRIBUTORS.txt`
 
 #### Parameters
 
@@ -506,7 +527,8 @@ Removes generated build artifacts and temporary files. ⚠️ Irreversible opera
 
 #### Behavior
 
-* Deletes `.build`, `.swiftpm`, and generated files
+* Deletes `.build/` and `.swiftpm/`
+* Deletes `openapi/openapi.yaml`, `db.sqlite`, and `migration-entries.json`
 * Intended for local development use
 
 
@@ -563,6 +585,10 @@ Serves OpenAPI documentation locally using Docker.
 
 #### Behavior
 
+* Accepts an OpenAPI file or directory (default: `openapi`)
+* Relative `-f` paths are resolved from the script location
+* If a file is provided, mounts its parent directory
+* For file paths, supports `.yml`/`.yaml` extension fallback
 * Runs Nginx in the foreground
 * Exposes documentation over HTTP
 
@@ -570,15 +596,20 @@ Serves OpenAPI documentation locally using Docker.
 
 * `-n <name>` – container name
 * `-p <host:container>` – port mapping
+* `-f <path>` – OpenAPI file or directory path
 
 #### Ignore files
 
 _None_
 
-#### Raw curl example
+#### Raw curl examples
 
 ```sh
 curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n openapi-preview
+```
+
+```sh
+curl -s $(baseUrl)/run-openapi-docker.sh | bash -s -- -n openapi-preview -f openapi/openapi.yaml
 ```
 
 ---
@@ -615,6 +646,71 @@ _Fix formatting:_
 
 ```sh
 curl -s $(baseUrl)/run-swift-format.sh | bash -s -- --fix
+```
+
+---
+
+### run-actionlint.sh
+
+#### Purpose
+
+Runs `actionlint` to validate GitHub Actions workflows.
+
+#### Behavior
+
+* Verifies `actionlint` is installed before running
+* Runs from repository root for consistent workflow path resolution
+* Passes through optional CLI arguments to `actionlint`
+
+#### Parameters
+
+* `<actionlint args...>` – optional arguments passed to `actionlint`
+
+#### Ignore files
+
+_None_
+
+#### Raw curl example
+
+```sh
+curl -s $(baseUrl)/run-actionlint.sh | bash
+```
+
+---
+
+### script-format.sh
+
+#### Purpose
+
+Runs `shfmt` to check or fix formatting for tracked shell-related files.
+
+#### Behavior
+
+* Verifies `shfmt` is installed before running
+* Targets tracked `*.sh`, `*.bash`, and `*.bats` files
+* Default mode checks formatting and fails on drift
+* `--fix` mode applies formatting in-place
+
+#### Parameters
+
+* `--fix` – apply formatting in-place
+
+#### Ignore files
+
+_None_
+
+#### Raw curl examples
+
+_Check only:_
+
+```sh
+curl -s $(baseUrl)/script-format.sh | bash
+```
+
+_Fix formatting:_
+
+```sh
+curl -s $(baseUrl)/script-format.sh | bash -s -- --fix
 ```
 
 ---

@@ -18,9 +18,12 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent CI and local logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Resolve the repository root
 # Ensures the CONTRIBUTORS.txt file is always written at the top level
@@ -28,13 +31,14 @@ REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
 
 # Collect contributors from git history
 #
-# - `git shortlog -es` groups commits by author
+# - `git shortlog -es HEAD` groups commits by author
 # - Output format: "<count>\tName <email>"
-contributors=$(git shortlog -es 2>/dev/null)
-
-# If git shortlog fails, the repository is likely invalid
-if [ $? -ne 0 ]; then
-    fatal "Error: Unable to run 'git shortlog'. Are you in a valid git repository?"
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    if ! contributors=$(git shortlog -es HEAD 2>/dev/null); then
+        fatal "Error: Unable to run 'git shortlog'. Are you in a valid git repository?"
+    fi
+else
+    contributors=""
 fi
 
 # Handle the case where no contributors are found
@@ -44,7 +48,7 @@ if [ -z "$contributors" ]; then
     exit 0
 else
     # Strip commit counts and format as a Markdown list
-    contributors=$(echo "$contributors" | awk '{$1=""; print "- " $0}')
+    contributors=$(printf '%s\n' "$contributors" | awk '{$1=""; print "- " $0}')
 fi
 
 log "Creating CONTRIBUTORS.txt file..."
@@ -59,7 +63,7 @@ log "Creating CONTRIBUTORS.txt file..."
 # The .mailmap file should be used to:
 # - Fix misspelled names
 # - Merge duplicate identities
-cat > "$REPO_ROOT/CONTRIBUTORS.txt" <<- EOF
+cat >"$REPO_ROOT/CONTRIBUTORS.txt" <<-EOF
 	### Contributors
 	$contributors
 	

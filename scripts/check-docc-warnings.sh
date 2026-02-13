@@ -22,22 +22,24 @@ set -euo pipefail
 # Logging helpers
 #
 # All logs go to stderr to keep stdout clean and CI-friendly.
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Configuration / state
-TARGETS_FILE=".docctargetlist"   # Optional file defining an explicit list of DocC targets
-TARGETS=""                       # Raw newline-separated target names (internal representation)
-TARGET_LIST=()                   # Parsed target names as a Bash array for iteration
+TARGETS_FILE=".docctargetlist" # Optional file defining an explicit list of DocC targets
+TARGETS=""                     # Raw newline-separated target names (internal representation)
+TARGET_LIST=()                 # Parsed target names as a Bash array for iteration
 
 # Swift package manifest to mutate
 PACKAGE_FILE="Package.swift"
 # Required injection anchor inside Package.dependencies
-INJECT_MARKER='// [docc-plugin-placeholder]' 
+INJECT_MARKER='// [docc-plugin-placeholder]'
 # Dependency line injected immediately after the marker
 DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
-                                     
 
 # Git safety (local runs only)
 #
@@ -120,13 +122,13 @@ ensure_docc_plugin() {
         END {
             if (!injected) exit 42
         }
-    ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
+    ' "$PACKAGE_FILE" >"$PACKAGE_FILE.tmp"
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
 
     # Validate manifest after mutation
-    swift package dump-package >/dev/null \
-      || fatal "Package.swift became invalid after injecting swift-docc-plugin"
+    swift package dump-package >/dev/null ||
+        fatal "Package.swift became invalid after injecting swift-docc-plugin"
 }
 
 # Pre-flight checks
@@ -153,8 +155,8 @@ auto_detect_targets() {
         fatal "jq is required. Install with: brew install jq"
     fi
 
-    TARGETS=$(swift package dump-package \
-        | jq -r '.targets[]
+    TARGETS=$(swift package dump-package |
+        jq -r '.targets[]
             | select(.type == "regular" or .type == "executable")
             | .name')
 
@@ -177,7 +179,7 @@ fi
 # Convert newline-separated target list into an array
 while IFS= read -r TARGET; do
     TARGET_LIST+=("$TARGET")
-done <<< "$TARGETS"
+done <<<"$TARGETS"
 
 TARGET_COUNT="${#TARGET_LIST[@]}"
 log "Targets detected: $TARGET_COUNT"

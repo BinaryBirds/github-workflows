@@ -18,9 +18,12 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent CI and local logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Repository containing the Swift OpenAPI Generator
 REPO="https://github.com/apple/swift-openapi-generator"
@@ -29,9 +32,9 @@ REPO="https://github.com/apple/swift-openapi-generator"
 #
 # Tags are sorted using semantic version ordering to ensure
 # the newest release is selected.
-VERSION=$(git ls-remote --tags --sort="v:refname" "${REPO}" \
-    | tail -n1 \
-    | sed 's/.*\///; s/\^{}//')
+VERSION=$(git ls-remote --tags --sort="v:refname" "${REPO}" |
+    tail -n1 |
+    sed 's/.*\///; s/\^{}//')
 
 # Parse optional flags
 #
@@ -41,8 +44,7 @@ while getopts v: flag; do
         v)
             VERSION=${OPTARG}
             ;;
-        *)
-            ;;
+        *) ;;
     esac
 done
 

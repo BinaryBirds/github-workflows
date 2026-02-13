@@ -17,9 +17,12 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent CI and local logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Resolve the repository root
 # Ensures correct path resolution even if the script is run from a subdirectory

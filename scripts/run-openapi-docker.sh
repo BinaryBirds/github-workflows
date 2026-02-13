@@ -16,24 +16,16 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent local logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
-# Resolve repository root
-# Allows the script to be executed from any subdirectory
-REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
-
-# Location of OpenAPI files
-# The directory is expected to contain one or more OpenAPI specifications
-OPENAPI_YAML_LOCATION="${REPO_ROOT}/openapi"
-
-# If the OpenAPI directory does not exist, skip serving gracefully
-# This avoids failing for repositories without API definitions
-if [ ! -d "${OPENAPI_YAML_LOCATION}" ]; then
-    error "❗ OpenAPI location not found."
-    exit 0
-fi
+# Resolve script directory
+# Allows the script to be executed from any subdirectory.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # Default Docker container name
 NAME="openapi-server"
@@ -42,17 +34,69 @@ NAME="openapi-server"
 # Nginx listens on port 80 inside the container
 PORT="8888:80"
 
+# Default OpenAPI path (file or directory)
+# If a file is provided, its parent directory will be mounted.
+OPENAPI_PATH="openapi"
+
+usage() {
+    cat >&2 <<EOF
+Usage: $0 [-n name] [-p host_port:container_port] [-f openapi_path]
+
+Options:
+  -n NAME   Docker container name (default: ${NAME})
+  -p PORT   Port mapping (default: ${PORT})
+  -f PATH   OpenAPI path (file or directory). Relative paths are resolved
+            from repository root (default: ${OPENAPI_PATH})
+EOF
+}
+
 # Parse optional CLI flags
 #
 # -n NAME   Override the Docker container name
 # -p PORT   Override the port mapping (host:container)
-while getopts ":n:p:" flag; do
+# -f PATH   Override OpenAPI path (file or directory)
+while getopts ":n:p:f:h" flag; do
     case "${flag}" in
         n) NAME="${OPTARG}" ;;
         p) PORT="${OPTARG}" ;;
-        *) ;;
+        f) OPENAPI_PATH="${OPTARG}" ;;
+        h)
+            usage
+            exit 0
+            ;;
+        \?) fatal "Unknown option: -${OPTARG}" ;;
+        :) fatal "Option -${OPTARG} requires an argument." ;;
     esac
 done
+
+# Resolve OpenAPI path to an absolute path
+if [[ "${OPENAPI_PATH}" = /* ]]; then
+    # Absolute paths are used as-is.
+    OPENAPI_ABS_PATH="${OPENAPI_PATH}"
+else
+    # Relative paths are resolved from this script directory.
+    OPENAPI_ABS_PATH="${SCRIPT_DIR}/${OPENAPI_PATH}"
+fi
+
+# Allow extension fallback between .yml and .yaml.
+if [ ! -e "${OPENAPI_ABS_PATH}" ]; then
+    # If the requested extension does not exist, try the sibling extension.
+    if [[ "${OPENAPI_ABS_PATH}" == *.yml ]] && [ -f "${OPENAPI_ABS_PATH%.yml}.yaml" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yml}.yaml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.yaml ]] && [ -f "${OPENAPI_ABS_PATH%.yaml}.yml" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yaml}.yml"
+    fi
+fi
+
+# Determine directory to mount in the container.
+if [ -d "${OPENAPI_ABS_PATH}" ]; then
+    OPENAPI_MOUNT_DIR="${OPENAPI_ABS_PATH}"
+elif [ -f "${OPENAPI_ABS_PATH}" ]; then
+    OPENAPI_MOUNT_DIR="$(dirname "${OPENAPI_ABS_PATH}")"
+else
+    error "❗ OpenAPI path not found: ${OPENAPI_ABS_PATH}"
+    exit 0
+fi
 
 # Serve the OpenAPI files using an Nginx Docker container
 #
@@ -60,6 +104,6 @@ done
 # - Publishes the configured port
 # - Automatically removes the container when stopped
 docker run --rm --name "${NAME}" \
-    -v "${OPENAPI_YAML_LOCATION}:/usr/share/nginx/html" \
+    -v "${OPENAPI_MOUNT_DIR}:/usr/share/nginx/html" \
     -p "${PORT}" \
     nginx

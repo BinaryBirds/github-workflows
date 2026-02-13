@@ -1,0 +1,90 @@
+name: Bats Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-bats-tests
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    name: Actionlint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y actionlint
+
+      - name: Run actionlint
+        run: actionlint
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck
+
+      - name: Install shfmt
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shfmt
+
+      - name: Run shellcheck
+        run: shellcheck scripts/*.sh
+
+      - name: Run shfmt check
+        run: git ls-files '*.sh' '*.bash' '*.bats' | xargs shfmt -d -i 4 -ci
+
+  bats:
+    name: Run Bats suite
+    needs:
+      - shellcheck
+      - actionlint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install bats (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y bats
+
+      - name: Install bats (macOS)
+        if: runner.os == 'macOS'
+        run: brew install bats-core
+
+      - name: Run Bats tests
+        run: bats --recursive tests/bats

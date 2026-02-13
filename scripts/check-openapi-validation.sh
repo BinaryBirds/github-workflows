@@ -25,7 +25,8 @@ fatal() {
 
 # Resolve script directory
 # Allows the script to be run from any subdirectory.
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_SOURCE="${BASH_SOURCE[0]-$0}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${SCRIPT_SOURCE}")" && pwd)"
 
 OPENAPI_PATH="openapi"
 

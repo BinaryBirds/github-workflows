@@ -145,3 +145,25 @@ YAML
     docker_call="$(cat "$DOCKER_LOG")"
     [[ "$docker_call" == *"/openapi/openapi.yaml:/openapi.yaml"* ]]
 }
+
+@test "check-openapi-validation works when script is piped to bash" {
+    repo="$(make_temp_repo)"
+    copy_openapi_scripts_into_repo "$repo"
+    install_docker_stub "$repo"
+
+    mkdir -p "$repo/openapi"
+    cat >"$repo/openapi/openapi.yaml" <<'YAML'
+openapi: 3.0.0
+info:
+  title: Pipe API
+  version: 1.0.0
+paths: {}
+YAML
+
+    export DOCKER_LOG="$repo/docker.log"
+    run bash -c "cd '$repo' && cat scripts/check-openapi-validation.sh | bash"
+
+    [ "$status" -eq 0 ]
+    docker_call="$(cat "$DOCKER_LOG")"
+    [[ "$docker_call" == *"/openapi/openapi.yaml:/openapi.yaml"* ]]
+}

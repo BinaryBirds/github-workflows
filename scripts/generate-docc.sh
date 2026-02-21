@@ -156,7 +156,7 @@ reset_git_after_docs() {
     fi
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 restore_injected_package_manifest() {
     if [ "${DOCC_PLUGIN_INJECTED}" != "true" ]; then
         return 0
@@ -174,7 +174,7 @@ restore_injected_package_manifest() {
     fi
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 cleanup_on_exit() {
     local rc=$?
     if [ "$rc" -ne 0 ]; then

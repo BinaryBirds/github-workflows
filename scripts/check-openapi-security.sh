@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
-# OpenAPI Security Check (OWASP ZAP)
+# OpenAPI Security Lint (Spectral)
 #
-# This script runs an OWASP ZAP API security scan against an OpenAPI
-# specification located in the repository.
+# This script runs fast static security lint checks against an OpenAPI
+# specification using Spectral in Docker.
 #
 # It is designed to be:
-# - Safe for CI (no side effects)
+# - Fast for CI and local runs
 # - Optional (exits successfully if no OpenAPI spec is present)
-#
-# The scan helps identify common API security issues early in the pipeline.
+# - Static (no running API server required)
 
 set -euo pipefail
 
 # Logging helpers
-# All output goes to stderr for consistent CI logs
 log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
 fatal() {
@@ -21,21 +19,19 @@ fatal() {
     exit 1
 }
 
-# Resolve script directory
-# This allows the script to be run from any subdirectory.
 SCRIPT_SOURCE="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${SCRIPT_SOURCE}")" && pwd)"
 
 OPENAPI_PATH="openapi"
+RULESET_FILE=""
+RULESET_CONTAINER_PATH="/tmp/spectral-security-ruleset.yaml"
 
 resolve_repo_root() {
-    # Prefer git root for local execution and subdirectory calls.
     if root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
         printf '%s\n' "${root}"
         return 0
     fi
 
-    # Fallback for checked-out scripts under a conventional ./scripts layout.
     if [ -d "${SCRIPT_DIR}/../.git" ]; then
         (
             cd -- "${SCRIPT_DIR}/.."
@@ -44,7 +40,6 @@ resolve_repo_root() {
         return 0
     fi
 
-    # Last resort for piped execution (for example: curl | bash).
     pwd
 }
 
@@ -57,6 +52,13 @@ Options:
             from repository root (default: ${OPENAPI_PATH})
 EOF
 }
+
+cleanup() {
+    if [ -n "${RULESET_FILE}" ]; then
+        rm -f "${RULESET_FILE}"
+    fi
+}
+trap cleanup EXIT
 
 while getopts ":f:h" flag; do
     case "${flag}" in
@@ -71,10 +73,8 @@ while getopts ":f:h" flag; do
 done
 
 if [[ "${OPENAPI_PATH}" = /* ]]; then
-    # Absolute paths are used as-is.
     OPENAPI_ABS_PATH="${OPENAPI_PATH}"
 else
-    # Relative paths prefer repository root, then current working directory.
     REPO_ROOT="$(resolve_repo_root)"
     REPO_OPENAPI_PATH="${REPO_ROOT}/${OPENAPI_PATH}"
     CWD_OPENAPI_PATH="$(pwd)/${OPENAPI_PATH}"
@@ -88,13 +88,20 @@ else
     fi
 fi
 
-# Allow extension fallback between .yml and .yaml.
+# Allow extension fallback among .yml, .yaml, and .json.
 if [ ! -e "${OPENAPI_ABS_PATH}" ]; then
-    # If the requested extension does not exist, try the sibling extension.
     if [[ "${OPENAPI_ABS_PATH}" == *.yml ]] && [ -f "${OPENAPI_ABS_PATH%.yml}.yaml" ]; then
         OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yml}.yaml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.yml ]] && [ -f "${OPENAPI_ABS_PATH%.yml}.json" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yml}.json"
     elif [[ "${OPENAPI_ABS_PATH}" == *.yaml ]] && [ -f "${OPENAPI_ABS_PATH%.yaml}.yml" ]; then
         OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yaml}.yml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.yaml ]] && [ -f "${OPENAPI_ABS_PATH%.yaml}.json" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yaml}.json"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.json ]] && [ -f "${OPENAPI_ABS_PATH%.json}.yaml" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.json}.yaml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.json ]] && [ -f "${OPENAPI_ABS_PATH%.json}.yml" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.json}.yml"
     fi
 fi
 
@@ -105,23 +112,45 @@ elif [ -d "${OPENAPI_ABS_PATH}" ]; then
         OPENAPI_SPEC_FILE="${OPENAPI_ABS_PATH}/openapi.yaml"
     elif [ -f "${OPENAPI_ABS_PATH}/openapi.yml" ]; then
         OPENAPI_SPEC_FILE="${OPENAPI_ABS_PATH}/openapi.yml"
+    elif [ -f "${OPENAPI_ABS_PATH}/openapi.json" ]; then
+        OPENAPI_SPEC_FILE="${OPENAPI_ABS_PATH}/openapi.json"
     else
-        log "❗ OpenAPI spec not found in directory ${OPENAPI_ABS_PATH} — skipping security scan."
+        log "❗ OpenAPI spec not found in directory ${OPENAPI_ABS_PATH} — skipping security lint."
         exit 0
     fi
 else
-    log "❗ OpenAPI path not found — skipping security scan."
+    log "❗ OpenAPI path not found — skipping security lint."
     exit 0
 fi
 
-# Run OWASP ZAP API scan in a Docker container
-#
-# - Mounts the OpenAPI file into the container
-# - Uses the OpenAPI specification as the scan target
-# - Fails the script if security issues are detected
-#
-# The container is removed after execution to keep the environment clean
-docker run --rm --name "check-openapi-security" \
-    -v "${OPENAPI_SPEC_FILE}:/app/openapi.yaml" \
-    -t zaproxy/zap-stable:latest zap-api-scan.py \
-    -t /app/openapi.yaml -f openapi
+RULESET_FILE="$(mktemp "${TMPDIR:-/tmp}/spectral-security-ruleset.XXXXXX.yaml")"
+cat >"${RULESET_FILE}" <<'EOF'
+extends:
+  - spectral:oas
+rules:
+  security-requirement-defined:
+    description: "Define security requirements at root and/or operation level."
+    severity: error
+    given:
+      - "$"
+    then:
+      field: security
+      function: truthy
+  no-http-server-urls:
+    description: "Server URLs should use HTTPS."
+    severity: error
+    given: "$.servers[*].url"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^https://"
+EOF
+
+OPENAPI_SPEC_BASENAME="$(basename "${OPENAPI_SPEC_FILE}")"
+docker run --rm --name "check-openapi-security-lint" \
+    -v "${OPENAPI_SPEC_FILE}:/app/${OPENAPI_SPEC_BASENAME}" \
+    -v "${RULESET_FILE}:${RULESET_CONTAINER_PATH}" \
+    stoplight/spectral:latest lint "/app/${OPENAPI_SPEC_BASENAME}" \
+    --fail-severity error \
+    --display-only-failures \
+    --ruleset "${RULESET_CONTAINER_PATH}"

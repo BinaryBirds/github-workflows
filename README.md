@@ -26,7 +26,7 @@ This workflow provides configurable, robust checks and testing:
 * **Optional Local Swift Dependency Checks**: Checks for accidental `.package(path:)` usage.
 * **Optional Swift Headers Check**: Validates Swift source file headers using a strict 5-line format and respects `.swiftheaderignore`.
 * **Optional DocC Warnings Check**: Runs DocC analysis with `--warnings-as-errors` and fails on warnings.
-* **Optional Swift Test Execution**: Runs tests using **`.build` caching** for efficiency.
+* **Optional Swift Test Execution**: Runs tests with optional **`.build` caching** for efficiency.
 * **Optional Swift Package Validation**: Validates Swift package structure, settings, and conventions to ensure consistency.
 * **Multi-Version Support**: Tests across multiple Swift versions, configurable via input (defaulting to `["6.0", "6.1"]`).
 * **SSH Support**: Includes steps to set up **SSH credentials** (via the `SSH_PRIVATE_KEY` secret) for projects relying on private Git dependencies.
@@ -38,7 +38,8 @@ This workflow provides configurable, robust checks and testing:
 | `local_swift_dependencies_check_enabled` | Enables local Swift dependency check | `false` |
 | `headers_check_enabled` | Enables Swift headers validation | `false` |
 | `docc_warnings_check_enabled` | Enables DocC warnings check | `false` |
-| `run_tests_with_cache_enabled` | Enables Swift tests with `.build` cache | `false` |
+| `run_tests_with_cache_enabled` | Enables the Swift test job | `false` |
+| `tests_cache_enabled` | Enables `.build` cache restore/save in the Swift test job | `true` |
 | `run_tests_swift_versions` | Swift versions to test | `["6.1","6.2"]` |
 | `swift_package_validation_enabled` | Runs Swift package validation in the repository. | `false` |
 
@@ -53,6 +54,7 @@ jobs:
       headers_check_enabled: true
       docc_warnings_check_enabled: true
       run_tests_with_cache_enabled: true
+      tests_cache_enabled: true
       run_tests_swift_versions: '["6.1","6.2"]'
       swift_package_validation_enabled: true
 ```
@@ -257,14 +259,16 @@ curl -s $(baseUrl)/check-local-swift-dependencies.sh | bash
 
 #### Purpose
 
-Runs a security scan of an OpenAPI specification using OWASP ZAP.
+Runs fast static OpenAPI security lint checks using Spectral.
 
 #### Behavior
 
 * Executes inside Docker
 * Accepts an OpenAPI file or directory (default: `openapi`)
 * Relative `-f` paths are resolved from the git repository root first, then current working directory
-* For file paths, supports `.yml`/`.yaml` extension fallback
+* For file paths, supports `.yml`/`.yaml`/`.json` extension fallback
+* For directory paths, resolves `openapi.yaml`, then `openapi.yml`, then `openapi.json`
+* Performs static linting only (no running API server required)
 * Skips execution if no OpenAPI specification can be resolved
 
 #### Parameters
@@ -298,12 +302,17 @@ Validates an OpenAPI specification for schema correctness.
 * Runs the OpenAPI validator in Docker
 * Accepts an OpenAPI file or directory (default: `openapi`)
 * Relative `-f` paths are resolved from the git repository root first, then current working directory
-* For file paths, supports `.yml`/`.yaml` extension fallback
+* For file paths, supports `.yml`/`.yaml`/`.json` extension fallback
+* For directory paths, resolves `openapi.yaml`, then `openapi.yml`, then `openapi.json`
+* Supports debug tracing via `-d` (prints resolved paths and command trace)
+* Supports `--detailed` to run additional Spectral diagnostics when validation fails
 * Skips execution if no OpenAPI specification can be resolved
 
 #### Parameters
 
 * `-f <path>` – OpenAPI file or directory path
+* `-d` – enable debug tracing
+* `--detailed` – run additional detailed diagnostics on validation failure
 
 #### Ignore files
 
@@ -498,11 +507,15 @@ Installs the Swift OpenAPI Generator CLI tool.
 #### Behavior
 
 * Builds from source
-* Supports version pinning
+* Installs the latest available tag by default
+* Supports version pinning via `-v`
+* Validates required tools (`git`, `curl`, `tar`, `swift`, `install`)
+* Uses fail-fast download behavior for release archives
 
 #### Parameters
 
 * `-v <version>` – install a specific version
+* `-h` – show usage help
 
 #### Ignore files
 
@@ -593,7 +606,7 @@ Serves OpenAPI documentation locally using Docker.
 * Accepts an OpenAPI file or directory (default: `openapi`)
 * Relative `-f` paths are resolved from the git repository root first, then current working directory
 * If a file is provided, mounts its parent directory
-* For file paths, supports `.yml`/`.yaml` extension fallback
+* For file paths, supports `.yml`/`.yaml`/`.json` extension fallback
 * Runs Nginx in the foreground
 * Exposes documentation over HTTP
 

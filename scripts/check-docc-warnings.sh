@@ -40,6 +40,7 @@ PACKAGE_FILE="Package.swift"
 INJECT_MARKER='// [docc-plugin-placeholder]'
 # Dependency line injected immediately after the marker
 DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
+DOCC_PLUGIN_INJECTED=false
 
 # Git safety (local runs only)
 #
@@ -71,6 +72,31 @@ reset_git_after_analysis() {
         git reset --hard
     fi
 }
+
+restore_injected_package_manifest() {
+    if [ "${DOCC_PLUGIN_INJECTED}" != "true" ]; then
+        return 0
+    fi
+
+    rm -f "$PACKAGE_FILE.tmp"
+
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        return 0
+    fi
+
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        log "Restoring ${PACKAGE_FILE} after failed DocC analysis"
+        git checkout -- "$PACKAGE_FILE" || true
+    fi
+}
+
+cleanup_on_exit() {
+    local rc=$?
+    if [ "$rc" -ne 0 ]; then
+        restore_injected_package_manifest
+    fi
+}
+trap cleanup_on_exit EXIT
 
 # Ensures that swift-docc-plugin is available to SwiftPM.
 #
@@ -125,6 +151,7 @@ ensure_docc_plugin() {
     ' "$PACKAGE_FILE" >"$PACKAGE_FILE.tmp"
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
+    DOCC_PLUGIN_INJECTED=true
 
     # Validate manifest after mutation
     swift package dump-package >/dev/null ||

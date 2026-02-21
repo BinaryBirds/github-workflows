@@ -109,13 +109,21 @@ else
     fi
 fi
 
-# Allow extension fallback between .yml and .yaml.
+# Allow extension fallback among .yml, .yaml, and .json.
 if [ ! -e "${OPENAPI_ABS_PATH}" ]; then
-    # If the requested extension does not exist, try the sibling extension.
+    # If the requested extension does not exist, try sibling extensions.
     if [[ "${OPENAPI_ABS_PATH}" == *.yml ]] && [ -f "${OPENAPI_ABS_PATH%.yml}.yaml" ]; then
         OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yml}.yaml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.yml ]] && [ -f "${OPENAPI_ABS_PATH%.yml}.json" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yml}.json"
     elif [[ "${OPENAPI_ABS_PATH}" == *.yaml ]] && [ -f "${OPENAPI_ABS_PATH%.yaml}.yml" ]; then
         OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yaml}.yml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.yaml ]] && [ -f "${OPENAPI_ABS_PATH%.yaml}.json" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.yaml}.json"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.json ]] && [ -f "${OPENAPI_ABS_PATH%.json}.yaml" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.json}.yaml"
+    elif [[ "${OPENAPI_ABS_PATH}" == *.json ]] && [ -f "${OPENAPI_ABS_PATH%.json}.yml" ]; then
+        OPENAPI_ABS_PATH="${OPENAPI_ABS_PATH%.json}.yml"
     fi
 fi
 

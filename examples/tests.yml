@@ -43,5 +43,6 @@ jobs:
       local_swift_dependencies_check_enabled : true
       docc_warnings_check_enabled : true
       run_tests_with_cache_enabled : true
+      tests_cache_enabled : true
       headers_check_enabled : true
       run_tests_swift_versions: '["6.1","6.2"]'

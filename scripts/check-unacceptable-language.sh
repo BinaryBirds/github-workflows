@@ -18,9 +18,12 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent CI logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # List of unacceptable or discouraged words
 # The list is converted into a single regex later
@@ -28,6 +31,10 @@ UNACCEPTABLE_WORD_LIST="blacklist whitelist slave master sane sanity insane insa
 
 # Will contain matches if any unacceptable language is found
 PATHS_WITH_UNACCEPTABLE_LANGUAGE=""
+UNACCEPTABLE_PATTERN="${UNACCEPTABLE_WORD_LIST// /|}"
+
+# Build git grep pathspec args. Start with repository root selector.
+set -- .
 
 # If an ignore file exists, use it to exclude paths from the search
 #
@@ -36,23 +43,19 @@ PATHS_WITH_UNACCEPTABLE_LANGUAGE=""
 if [[ -f .unacceptablelanguageignore ]]; then
     log "Found unacceptablelanguageignore file..."
     log "Checking for unacceptable language..."
-
-    PATHS_WITH_UNACCEPTABLE_LANGUAGE=$(
-        tr '\n' '\0' < .unacceptablelanguageignore \
-        | xargs -0 -I% printf '":(exclude)%" ' \
-        | xargs git grep -i -I -w -H -n --column -E "${UNACCEPTABLE_WORD_LIST// /|}" \
-        | grep -v "ignore-unacceptable-language" \
-        || true
-    ) | /usr/bin/paste -s -d " " -
+    while IFS= read -r path; do
+        [ -z "${path}" ] && continue
+        set -- "$@" ":(exclude)${path}"
+    done <.unacceptablelanguageignore
 else
     log "Checking for unacceptable language..."
-
-    PATHS_WITH_UNACCEPTABLE_LANGUAGE=$(
-        git grep -i -I -w -H -n --column -E "${UNACCEPTABLE_WORD_LIST// /|}" \
-        | grep -v "ignore-unacceptable-language" \
-        || true
-    ) | /usr/bin/paste -s -d " " -
 fi
+
+PATHS_WITH_UNACCEPTABLE_LANGUAGE="$(
+    git grep -i -I -w -H -n --column -E "${UNACCEPTABLE_PATTERN}" -- "$@" |
+        grep -v "ignore-unacceptable-language" ||
+        true
+)"
 
 # If any matches were found, fail the script and print the affected files
 if [ -n "${PATHS_WITH_UNACCEPTABLE_LANGUAGE}" ]; then

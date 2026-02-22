@@ -164,10 +164,6 @@ restore_injected_package_manifest() {
 
     rm -f "$PACKAGE_FILE.tmp"
 
-    if [ -n "${GITHUB_ACTIONS:-}" ]; then
-        return 0
-    fi
-
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         log "Restoring ${PACKAGE_FILE} after failed documentation generation"
         git checkout -- "$PACKAGE_FILE" || true

@@ -66,4 +66,16 @@ format:
 package:
 	curl -s $(baseUrl)/check-swift-package.sh | bash
 
+lint-shell:
+	curl -s $(baseUrl)/script-format.sh | bash
+
+format-shell:
+	curl -s $(baseUrl)/script-format.sh | bash -s -- --fix
+
+lint-workflows:
+	curl -s $(baseUrl)/run-actionlint.sh | bash
+
 check: symlinks language deps lint docc-warnings headers
+
+test-bats:
+	bats --recursive tests/bats

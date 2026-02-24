@@ -15,6 +15,10 @@ on:
         type: boolean
         description: "Boolean to enable run tests with .build cache."
         default: false
+      tests_cache_enabled:
+        type: boolean
+        description: "Boolean to enable .build cache usage inside the run tests job."
+        default: true
       run_tests_swift_versions:
         type: string
         description: "List of Swift versions to test with."
@@ -126,11 +130,13 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Install zstd
+        if: ${{ inputs.tests_cache_enabled }}
         run: |
           sudo apt-get update -y
           sudo apt-get install -y zstd
 
       - name: Restore .build
+        if: ${{ inputs.tests_cache_enabled }}
         id: "restore-build"
         uses: actions/cache/restore@v4
         with:
@@ -142,11 +148,16 @@ jobs:
         run: swift build --build-tests
 
       - name: Cache .build
-        if: steps.restore-build.outputs.cache-hit != 'true'
+        if: ${{ inputs.tests_cache_enabled && steps.restore-build.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: .build
           key: "swiftpm-tests-build-${{ runner.os }}-${{ matrix.swift }}-${{ github.event.pull_request.base.sha || github.event.after }}"
 
       - name: Run unit tests
-        run: swift test --skip-build --parallel
+        run: |
+          if [ "${{ inputs.tests_cache_enabled }}" = "true" ]; then
+            swift test --skip-build --parallel
+          else
+            swift test --parallel
+          fi

@@ -18,9 +18,12 @@ set -euo pipefail
 
 # Logging helpers
 # All output is written to stderr for consistent CI and local logs
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Configuration / state
 OUTPUT_DIR="./docs"            # Output directory for generated documentation
@@ -34,9 +37,10 @@ REPO_NAME=""                   # Hosting base path (for GitHub Pages)
 # Swift package manifest to mutate
 PACKAGE_FILE="Package.swift"
 # Required injection anchor inside dependencies
-INJECT_MARKER='// [docc-plugin-placeholder]' 
+INJECT_MARKER='// [docc-plugin-placeholder]'
 # Dependency line injected after the marker
 DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
+DOCC_PLUGIN_INJECTED=false
 
 # Argument parsing
 #
@@ -128,13 +132,14 @@ ensure_docc_plugin() {
         END {
             if (!injected) exit 42
         }
-    ' "$PACKAGE_FILE" > "$PACKAGE_FILE.tmp"
+    ' "$PACKAGE_FILE" >"$PACKAGE_FILE.tmp"
 
     mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
+    DOCC_PLUGIN_INJECTED=true
 
     # Validate manifest after mutation
-    swift package dump-package >/dev/null \
-      || fatal "Package.swift became invalid after injecting swift-docc-plugin"
+    swift package dump-package >/dev/null ||
+        fatal "Package.swift became invalid after injecting swift-docc-plugin"
 }
 
 # Restore git state after documentation generation (local only)
@@ -150,6 +155,29 @@ reset_git_after_docs() {
         git reset --hard
     fi
 }
+
+# shellcheck disable=SC2317,SC2329
+restore_injected_package_manifest() {
+    if [ "${DOCC_PLUGIN_INJECTED}" != "true" ]; then
+        return 0
+    fi
+
+    rm -f "$PACKAGE_FILE.tmp"
+
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        log "Restoring ${PACKAGE_FILE} after failed documentation generation"
+        git checkout -- "$PACKAGE_FILE" || true
+    fi
+}
+
+# shellcheck disable=SC2317,SC2329
+cleanup_on_exit() {
+    local rc=$?
+    if [ "$rc" -ne 0 ]; then
+        restore_injected_package_manifest
+    fi
+}
+trap cleanup_on_exit EXIT
 
 # Determine repository name
 #
@@ -186,7 +214,7 @@ load_from_config() {
     fi
 
     for TARGET in $TARGETS; do
-        TARGET_FLAGS+=( --target "$TARGET" )
+        TARGET_FLAGS+=(--target "$TARGET")
     done
 }
 
@@ -198,8 +226,8 @@ auto_detect_targets() {
         fatal "jq is required (install with: brew install jq)"
     fi
 
-    TARGETS=$(swift package dump-package \
-        | jq -r '.targets[]
+    TARGETS=$(swift package dump-package |
+        jq -r '.targets[]
             | select(.type == "regular" or .type == "executable")
             | .name')
 
@@ -208,7 +236,7 @@ auto_detect_targets() {
     fi
 
     for TARGET in $TARGETS; do
-        TARGET_FLAGS+=( --target "$TARGET" )
+        TARGET_FLAGS+=(--target "$TARGET")
     done
 }
 
@@ -233,7 +261,7 @@ generate_pages_redirects() {
     # ------------------------------------------------------------
     # 1. Site root redirect → /documentation/
     # ------------------------------------------------------------
-    cat > "$OUTPUT_DIR/index.html" <<EOF
+    cat >"$OUTPUT_DIR/index.html" <<EOF
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -259,13 +287,19 @@ EOF
     # 3. Single-target → redirect /documentation/ → /documentation/<Target>/
     # ------------------------------------------------------------
     local TARGET
-    TARGET=$(ls -d "$DOC_ROOT"/*/ 2>/dev/null | head -n 1 | xargs basename)
+    local FIRST_TARGET_DIR
+    FIRST_TARGET_DIR="$(find "$DOC_ROOT" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    if [ -n "$FIRST_TARGET_DIR" ]; then
+        TARGET="$(basename "$FIRST_TARGET_DIR")"
+    else
+        TARGET=""
+    fi
 
     if [ -z "$TARGET" ]; then
         fatal "Unable to determine single DocC target"
     fi
 
-    cat > "$DOC_ROOT/index.html" <<EOF
+    cat >"$DOC_ROOT/index.html" <<EOF
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -323,8 +357,8 @@ if $LOCAL_MODE; then
         generate-documentation \
         $COMBINED_FLAG \
         "${TARGET_FLAGS[@]}" \
-        --output-path "$OUTPUT_DIR" \
-        || DOCS_EXIT_CODE=$?
+        --output-path "$OUTPUT_DIR" ||
+        DOCS_EXIT_CODE=$?
 else
     swift package \
         --allow-writing-to-directory "$OUTPUT_DIR" \
@@ -333,8 +367,8 @@ else
         "${TARGET_FLAGS[@]}" \
         --output-path "$OUTPUT_DIR" \
         --transform-for-static-hosting \
-        ${REPO_NAME:+--hosting-base-path "$REPO_NAME"} \
-        || DOCS_EXIT_CODE=$?
+        ${REPO_NAME:+--hosting-base-path "$REPO_NAME"} ||
+        DOCS_EXIT_CODE=$?
 fi
 
 # Report failure without hiding the exit code

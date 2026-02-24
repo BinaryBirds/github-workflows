@@ -21,9 +21,12 @@ set -euo pipefail
 # Logging helpers
 #
 # All output goes to stderr to keep stdout clean and CI-friendly.
-log()   { printf -- "** %s\n" "$*" >&2; }
+log() { printf -- "** %s\n" "$*" >&2; }
 error() { printf -- "** ERROR: %s\n" "$*" >&2; }
-fatal() { error "$@"; exit 1; }
+fatal() {
+    error "$@"
+    exit 1
+}
 
 # Determine repository root
 #
@@ -39,10 +42,10 @@ REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
 #
 # Currently, we only check Package.swift, since local package references
 # are only valid in that file.
-read -ra PATHS_TO_CHECK <<< "$(
+read -ra PATHS_TO_CHECK <<<"$(
     git -C "${REPO_ROOT}" ls-files -z \
-        "Package.swift" \
-    | xargs -0
+        "Package.swift" |
+        xargs -0
 )"
 
 # Scan files for local Swift package references

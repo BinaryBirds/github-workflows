@@ -236,7 +236,7 @@ fi
 FILES=()
 while IFS= read -r -d '' file; do
     FILES+=("$file")
-done < <(git ls-files -z "${EXCLUDE_PATTERNS[@]}")
+done < <(git ls-files -z --cached --others --exclude-standard "${EXCLUDE_PATTERNS[@]}")
 
 for file in "${FILES[@]}"; do
     if ! check_or_fix_header "$file"; then

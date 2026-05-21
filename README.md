@@ -235,7 +235,7 @@ Prevents accidental usage of local Swift package dependencies.
 
 #### Behavior
 
-* Scans git-tracked `Package.swift` files only (ignores untracked files)
+* Scans tracked and untracked `Package.swift` files (excluding ignored files)
 * Detects `.package(path:)`
 * Fails immediately on detection
 
@@ -345,7 +345,7 @@ Ensures Swift source files contain a consistent, standardized header.
 
 * Enforces a strict 5-line header format
 * Can optionally insert or update headers in-place
-* Processes only git-tracked Swift files
+* Processes tracked and untracked Swift files (excluding ignored files)
 * Skips `Package.swift` explicitly
 * Accepts `Created by ... on YYYY. MM. DD.` and legacy `..` suffix
 * In `--fix` mode, normalizes legacy `..` to `.`
@@ -640,6 +640,7 @@ Runs `swift-format` to lint or format Swift source files.
 
 #### Behavior
 
+* Scans tracked and untracked Swift files (`--exclude-standard`), not only tracked files
 * Downloads default configuration if missing
 * Respects ignore rules
 * Supports parallel execution
@@ -677,6 +678,7 @@ Runs `actionlint` to validate GitHub Actions workflows.
 #### Behavior
 
 * Verifies `actionlint` is installed before running
+* Emits a clear upgrade hint when local `actionlint` does not recognize newer runner labels
 * Runs from repository root for consistent workflow path resolution
 * Passes through optional CLI arguments to `actionlint`
 
@@ -700,12 +702,12 @@ curl -s $(baseUrl)/run-actionlint.sh | bash
 
 #### Purpose
 
-Runs `shfmt` to check or fix formatting for tracked shell-related files.
+Runs `shfmt` to check or fix formatting for shell-related files.
 
 #### Behavior
 
 * Verifies `shfmt` is installed before running
-* Targets tracked `*.sh`, `*.bash`, and `*.bats` files
+* Targets tracked and untracked `*.sh`, `*.bash`, and `*.bats` files (excluding ignored files)
 * Default mode checks formatting and fails on drift
 * `--fix` mode applies formatting in-place
 

@@ -13,8 +13,8 @@
 # - CI: fail fast if local dependencies are detected
 # - Local: allow developers to verify their Package.swift before pushing
 #
-# The script checks ONLY tracked files to avoid false positives from
-# uncommitted or generated files.
+# The script checks tracked and untracked files, excluding files ignored
+# by standard git ignore rules.
 
 set -euo pipefail
 
@@ -37,13 +37,13 @@ REPO_ROOT="$(git -C "$PWD" rev-parse --show-toplevel)"
 # Collect files to check
 #
 # We intentionally use `git ls-files` to:
-# - Inspect only tracked files
-# - Avoid scanning generated or uncommitted files
+# - Inspect tracked and untracked files
+# - Exclude ignored/generated files via `--exclude-standard`
 #
 # Currently, we only check Package.swift, since local package references
 # are only valid in that file.
 read -ra PATHS_TO_CHECK <<<"$(
-    git -C "${REPO_ROOT}" ls-files -z \
+    git -C "${REPO_ROOT}" ls-files -z --cached --others --exclude-standard \
         "Package.swift" |
         xargs -0
 )"

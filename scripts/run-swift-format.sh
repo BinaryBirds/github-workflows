@@ -65,14 +65,14 @@ fi
 
 # Run swift-format
 #
-# - Uses git to list all tracked Swift files
+# - Uses git to list tracked and untracked Swift files
 # - Applies exclusions defined in .swiftformatignore
 # - Runs formatting in parallel for performance
 #
 # The exit code is captured explicitly to allow controlled error handling.
 tr '\n' '\0' <.swiftformatignore |
     xargs -0 -I% printf '":(exclude)%" ' |
-    xargs git ls-files -z '*.swift' |
+    xargs git ls-files -z --cached --others --exclude-standard '*.swift' |
     xargs -0 swift format "${FORMAT_COMMAND[@]}" --parallel &&
     SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?
 

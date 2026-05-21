@@ -50,7 +50,7 @@ fi
 FILES=()
 while IFS= read -r -d '' file; do
     FILES+=("$file")
-done < <(git ls-files -z '*.sh' '*.bash' '*.bats')
+done < <(git ls-files -z --cached --others --exclude-standard '*.sh' '*.bash' '*.bats')
 
 if [ "${#FILES[@]}" -eq 0 ]; then
     log "No shell files found to format."

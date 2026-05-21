@@ -169,12 +169,13 @@ EOF2
     run run_checker --fix
     [ "$status" -eq 0 ]
 
-    cp "$TMPDIR/Address.swift" "$TMPDIR/once.swift"
+    before_content="$(cat "$TMPDIR/Address.swift")"
 
     run run_checker --fix
     [ "$status" -eq 0 ]
 
-    diff -u "$TMPDIR/once.swift" "$TMPDIR/Address.swift"
+    after_content="$(cat "$TMPDIR/Address.swift")"
+    [ "$before_content" = "$after_content" ]
 }
 
 @test "--author without value fails with clear error" {

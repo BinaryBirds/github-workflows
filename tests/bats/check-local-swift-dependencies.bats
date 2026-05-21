@@ -50,7 +50,7 @@ SWIFT
     [[ "$output" == *"contains local Swift package reference"* ]]
 }
 
-@test "check-local-swift-dependencies ignores untracked Package.swift" {
+@test "check-local-swift-dependencies checks untracked Package.swift" {
     repo="$(make_temp_repo)"
     copy_script_into_repo "$repo" "check-local-swift-dependencies.sh"
 
@@ -74,8 +74,8 @@ TXT
 
     run bash -c "cd '$repo' && bash scripts/check-local-swift-dependencies.sh"
 
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Found 0 local Swift package dependency references"* ]]
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"contains local Swift package reference"* ]]
 }
 
 @test "check-local-swift-dependencies passes when no Package.swift is tracked" {

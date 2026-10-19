@@ -6,7 +6,7 @@
 # Features:
 # - Supports explicit target selection via .docctargetlist
 # - Falls back to auto-detecting documentable Swift targets
-# - Injects swift-docc-plugin temporarily if missing
+# - Adds swift-docc-plugin temporarily if missing
 # - Supports local preview mode and GitHub Pages static hosting
 # - Enforces a clean git working tree for local runs
 #
@@ -34,13 +34,10 @@ COMBINED_FLAG=""               # Experimental combined documentation flag
 LOCAL_MODE=false               # Local preview vs static hosting mode
 REPO_NAME=""                   # Hosting base path (for GitHub Pages)
 
-# Swift package manifest to mutate
+# Swift package manifest to mutate temporarily
 PACKAGE_FILE="Package.swift"
-# Required injection anchor inside dependencies
-INJECT_MARKER='// [docc-plugin-placeholder]'
-# Dependency line injected after the marker
-DOCC_DEP='        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.0"),'
 DOCC_PLUGIN_INJECTED=false
+PACKAGE_BACKUP=""
 
 # Argument parsing
 #
@@ -67,9 +64,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Git safety (local runs only)
-#
-# Prevents accidental loss of local changes when the script temporarily
-# modifies Package.swift.
 ensure_clean_git() {
     if [ -n "${GITHUB_ACTIONS:-}" ]; then
         return 0
@@ -84,9 +78,9 @@ ensure_clean_git() {
 
 # Ensures that swift-docc-plugin is available to SwiftPM.
 #
-# This function injects the dependency using a fixed marker
-# to avoid touching target-level dependencies or relying on
-# fragile text matching.
+# SwiftPM edits the manifest structurally, so callers do not need to maintain
+# a placeholder comment in Package.swift. The original manifest is restored by
+# the EXIT trap after documentation generation, whether it succeeds or fails.
 ensure_docc_plugin() {
     [ -f "$PACKAGE_FILE" ] || fatal "Package.swift not found"
 
@@ -96,64 +90,18 @@ ensure_docc_plugin() {
         return 0
     fi
 
-    # Marker must exist as a standalone line (whitespace allowed)
-    if ! awk -v marker="$INJECT_MARKER" '
-        {
-            line = $0
-            sub(/^[[:space:]]+/, "", line)
-            sub(/[[:space:]]+$/, "", line)
-            if (line == marker) {
-                found = 1
-                exit 0
-            }
-        }
-        END { exit found ? 0 : 1 }
-    ' "$PACKAGE_FILE"; then
-        fatal "Injection marker '${INJECT_MARKER}' not found as a standalone line in Package.swift"
-    fi
-
-    log "Injecting swift-docc-plugin at ${INJECT_MARKER}"
-
-    # Inject exactly once at the marker
-    awk -v marker="$INJECT_MARKER" -v dep="$DOCC_DEP" '
-        BEGIN { injected = 0 }
-        {
-            print
-            if (!injected) {
-                line = $0
-                sub(/^[[:space:]]+/, "", line)
-                sub(/[[:space:]]+$/, "", line)
-                if (line == marker) {
-                    print dep
-                    injected = 1
-                }
-            }
-        }
-        END {
-            if (!injected) exit 42
-        }
-    ' "$PACKAGE_FILE" >"$PACKAGE_FILE.tmp"
-
-    mv "$PACKAGE_FILE.tmp" "$PACKAGE_FILE"
+    PACKAGE_BACKUP="$(mktemp "${PACKAGE_FILE}.backup.XXXXXX")"
+    cp -p "$PACKAGE_FILE" "$PACKAGE_BACKUP"
     DOCC_PLUGIN_INJECTED=true
+
+    log "Temporarily adding swift-docc-plugin with SwiftPM"
+    swift package add-dependency \
+        https://github.com/apple/swift-docc-plugin \
+        --from 1.4.0 || fatal "Failed to add swift-docc-plugin dependency"
 
     # Validate manifest after mutation
     swift package dump-package >/dev/null ||
-        fatal "Package.swift became invalid after injecting swift-docc-plugin"
-}
-
-# Restore git state after documentation generation (local only)
-#
-# Ensures the repository is returned to a clean state after execution.
-reset_git_after_docs() {
-    if [ -n "${GITHUB_ACTIONS:-}" ]; then
-        return 0
-    fi
-
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        log "Resetting local git working tree"
-        git reset --hard
-    fi
+        fatal "Package.swift became invalid after adding swift-docc-plugin"
 }
 
 # shellcheck disable=SC2317,SC2329
@@ -162,20 +110,18 @@ restore_injected_package_manifest() {
         return 0
     fi
 
-    rm -f "$PACKAGE_FILE.tmp"
-
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        log "Restoring ${PACKAGE_FILE} after failed documentation generation"
-        git checkout -- "$PACKAGE_FILE" || true
-    fi
+    log "Restoring ${PACKAGE_FILE} after DocC generation"
+    cp -p "$PACKAGE_BACKUP" "$PACKAGE_FILE"
+    rm -f "$PACKAGE_BACKUP"
+    PACKAGE_BACKUP=""
+    DOCC_PLUGIN_INJECTED=false
 }
 
 # shellcheck disable=SC2317,SC2329
 cleanup_on_exit() {
     local rc=$?
-    if [ "$rc" -ne 0 ]; then
-        restore_injected_package_manifest
-    fi
+    restore_injected_package_manifest
+    return "$rc"
 }
 trap cleanup_on_exit EXIT
 
@@ -381,5 +327,4 @@ if ! $LOCAL_MODE && [ "$DOCS_EXIT_CODE" -eq 0 ]; then
 fi
 
 # Cleanup and exit
-reset_git_after_docs
 exit $DOCS_EXIT_CODE

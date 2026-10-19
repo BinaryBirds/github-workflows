@@ -23,10 +23,6 @@ on:
         type: string
         description: "List of Swift versions to test with."
         default: '["6.1", "6.2"]'
-      docc_warnings_check_enabled:
-        type: boolean
-        description: "Runs DocC analysis and fails on warnings. Defaults to false."
-        default: false
       swift_package_validation_enabled:
         type: boolean
         description: "Runs Swift package validation script (structure, settings, files). Defaults to false."
@@ -81,25 +77,6 @@ jobs:
       - name: Run Swift package validation
         run: |
           curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-swift-package.sh | bash
-
-  docc_warnings_check:
-    name: DocC warnings check
-    if: ${{ inputs.docc_warnings_check_enabled }}
-    runs-on: ubuntu-latest
-    container:
-      image: swift:6.2
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Install curl + jq
-        run: |
-          apt-get update -y
-          apt-get install -y curl jq
-      - name: Run DocC warnings check
-        run: |
-          curl -s https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/check-docc-warnings.sh | bash
 
   cache-and-test:
     name: Run tests with cache

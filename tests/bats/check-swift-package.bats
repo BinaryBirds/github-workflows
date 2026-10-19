@@ -40,7 +40,6 @@ let package = Package(
         .library(name: "Demo", targets: ["Demo"])
     ],
     dependencies: [
-        // [docc-plugin-placeholder]
     ],
     targets: [
         .target(
@@ -131,20 +130,17 @@ EOF
     [[ "$output" == *"swift-tools-version too old"* ]]
 }
 
-@test "check-swift-package fails when docc placeholder is missing" {
+@test "check-swift-package passes when docc placeholder is missing" {
     repo="$(make_temp_repo)"
     copy_script_into_repo "$repo" "check-swift-package.sh"
     setup_valid_swift_package_layout "$repo"
     write_valid_package_swift "$repo"
     install_swift_dump_stub_success "$repo"
 
-    sed -i.bak '/docc-plugin-placeholder/d' "$repo/Package.swift"
-    rm -f "$repo/Package.swift.bak"
-
     run bash -c "cd '$repo' && sh scripts/check-swift-package.sh"
 
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"docc plugin placeholder missing"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Swift Package validation passed"* ]]
 }
 
 @test "check-swift-package fails when a target misses swiftSettings: defaultSwiftSettings" {
@@ -165,7 +161,6 @@ let package = Package(
         .library(name: "Demo", targets: ["Demo"])
     ],
     dependencies: [
-        // [docc-plugin-placeholder]
     ],
     targets: [
         .target(

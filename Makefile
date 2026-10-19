@@ -2,21 +2,12 @@ SHELL=/bin/bash
 
 baseUrl = https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts
 
-breakage:
-	curl -s $(baseUrl)/check-api-breakage.sh | bash
-
-symlinks:
-	curl -s $(baseUrl)/check-broken-symlinks.sh | bash
-
 ## params: --local: generate for local testing
 docc-generate:
 	curl -s $(baseUrl)/generate-docc.sh | bash
 
 docc-local:
 	curl -s $(baseUrl)/generate-docc.sh | bash -s -- --local
-
-docc-warnings:
-	curl -s $(baseUrl)/check-docc-warnings.sh | bash
 
 ## params: -n: name, -p: port
 run-docc:
@@ -36,9 +27,6 @@ openapi-security:
 
 openapi-validation:
 	curl -s $(baseUrl)/check-openapi-validation.sh | bash
-
-language:
-	curl -s $(baseUrl)/check-unacceptable-language.sh | bash
 
 contributors:
 	curl -s $(baseUrl)/generate-contributors-list.sh | bash
@@ -75,7 +63,7 @@ format-shell:
 lint-workflows:
 	curl -s $(baseUrl)/run-actionlint.sh | bash
 
-check: symlinks language deps lint docc-warnings headers
+check: deps lint headers
 
 test-bats:
 	bats --recursive tests/bats

@@ -89,13 +89,6 @@ if [ -n "$PACKAGE_JSON" ]; then
     fi
 fi
 
-# docc placeholder
-if grep -q '// *\[docc-plugin-placeholder\]' Package.swift 2>/dev/null; then
-    log "✅ docc plugin placeholder present"
-else
-    error "❌ docc plugin placeholder missing"
-fi
-
 # swiftSettings: defaultSwiftSettings on all targets
 if [ -n "$PACKAGE_JSON" ]; then
     TARGETS="$(echo "$PACKAGE_JSON" | jq -r '.targets[].name')"

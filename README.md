@@ -21,11 +21,10 @@ This section details the reusable workflows provided by the repository.
 
 ### 1. Extra Soundness Workflow (`extra_soundness.yml`)
 
-This workflow provides configurable, robust checks and testing:
+This workflow provides Binary Birds-specific checks and testing alongside the standard checks in [swiftlang/github-workflows](https://github.com/swiftlang/github-workflows):
 
 * **Optional Local Swift Dependency Checks**: Checks for accidental `.package(path:)` usage.
 * **Optional Swift Headers Check**: Validates Swift source file headers using a strict 5-line format and respects `.swiftheaderignore`.
-* **Optional DocC Warnings Check**: Runs DocC analysis with `--warnings-as-errors` and fails on warnings.
 * **Optional Swift Test Execution**: Runs tests with optional **`.build` caching** for efficiency.
 * **Optional Swift Package Validation**: Validates Swift package structure, settings, and conventions to ensure consistency.
 * **Multi-Version Support**: Tests across multiple Swift versions, configurable via input (defaulting to `["6.0", "6.1"]`).
@@ -37,7 +36,6 @@ This workflow provides configurable, robust checks and testing:
 | ------ | ------------ | --------- |
 | `local_swift_dependencies_check_enabled` | Enables local Swift dependency check | `false` |
 | `headers_check_enabled` | Enables Swift headers validation | `false` |
-| `docc_warnings_check_enabled` | Enables DocC warnings check | `false` |
 | `run_tests_with_cache_enabled` | Enables the Swift test job | `false` |
 | `tests_cache_enabled` | Enables `.build` cache restore/save in the Swift test job | `true` |
 | `run_tests_swift_versions` | Swift versions to test | `["6.1","6.2"]` |
@@ -52,7 +50,6 @@ jobs:
     with:
       local_swift_dependencies_check_enabled: true
       headers_check_enabled: true
-      docc_warnings_check_enabled: true
       run_tests_with_cache_enabled: true
       tests_cache_enabled: true
       run_tests_swift_versions: '["6.1","6.2"]'
@@ -79,22 +76,6 @@ jobs:
       id-token: write
 ```
 
-### 3. API Breaking Changes Workflow (`api_breakage.yml`)
-
-This workflow checks for API breaking changes in the repository:
-
-* Runs API Breakage Checks: Executes the Binary Birds API breakage checking script.
-* Swift-based Environment: Runs inside a swift:latest Docker container.
-* Full Git History Available: Checks out the repository with complete history for accurate comparison.
-
-#### Example Usage (Caller Repository)
-
-```yaml
-jobs:
-  check-api-breakage:
-    uses: BinaryBirds/github-workflows/.github/workflows/api_breakage.yml@main
-```
-
 -----
 
 ## Makefile Usage
@@ -118,114 +99,6 @@ These combined commands run several scripts in sequence to provide a quick, cons
 
 The `Makefile` uses the variable `baseUrl` which points to the source of all scripts:
 `https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts`
-
-### DocC dependency placeholder requirement
-
-DocC-related scripts rely on a placeholder inside `Package.swift` to safely inject the `swift-docc-plugin` dependency when needed.
-
-Your `Package.swift` must contain a top-level `dependencies` section (even if empty) and include the following comment:
-
-```swift
-// [docc-plugin-placeholder]
-```
-
-This placeholder defines the only supported injection point. If either the dependencies section or the placeholder is missing, DocC scripts will fail intentionally.
-
-```swift
-dependencies: [
-    // [docc-plugin-placeholder]
-]
-```
-
-The placeholder itself has no effect on builds and does not modify target-level dependencies.
-
-### check-api-breakage.sh
-
-#### Purpose
-
-Detects source- and binary-level API breaking changes in Swift packages to prevent unintended public API regressions.
-
-#### Behavior
-
-* Uses `swift package diagnose-api-breaking-changes`
-* Pull requests: fetches `${GITHUB_BASE_REF}` into a local `pull-base-ref` and compares against that ref
-* Other contexts: fetches tags and compares against the latest Git tag
-* If no tags exist, exits successfully with a warning
-* Fails when breaking changes are detected
-
-#### Parameters
-
-_None_
-
-#### Ignore files
-
-_None_
-
-#### Raw curl example
-
-```sh
-curl -s $(baseUrl)/check-api-breakage.sh | bash
-```
-
----
-
-### check-broken-symlinks.sh
-
-#### Purpose
-
-Ensures all git-tracked symbolic links resolve to valid targets.
-
-#### Behavior
-
-* Inspects only symbolic links
-* Ignores regular missing files
-* Reports each broken symlink explicitly
-* Exits non-zero if any broken symlink is found
-
-#### Parameters
-
-_None_
-
-#### Ignore files
-
-_None_
-
-#### Raw curl example
-
-```sh
-curl -s $(baseUrl)/check-broken-symlinks.sh | bash
-```
-
----
-
-### check-docc-warnings.sh
-
-#### Purpose
-
-Runs DocC documentation analysis in strict mode, treating warnings as errors.
-
-#### Behavior
-
-* Uses `.docctargetlist` when present, otherwise auto-detects targets
-* Temporarily injects `swift-docc-plugin` if missing
-* Requires a clean git working tree locally
-* Restores git state after execution
-
-#### Parameters
-
-_None_
-
-#### Ignore files
-
-* `.docctargetlist` – explicitly defines documented targets
-
-#### Raw curl example
-
-```sh
-curl -s $(baseUrl)/check-docc-warnings.sh | bash
-```
-
----
 
 ### check-local-swift-dependencies.sh
 
@@ -376,34 +249,6 @@ curl -s $(baseUrl)/check-swift-headers.sh | bash -s -- --fix --author "John Doe"
 
 ---
 
-### check-unacceptable-language.sh
-
-#### Purpose
-
-Detects discouraged or outdated terminology to promote inclusive language.
-
-#### Behavior
-
-* Case-insensitive, whole-word matching
-* Scans git-tracked files only
-* Lines containing `ignore-unacceptable-language` are excluded from failures
-
-#### Parameters
-
-_None_
-
-#### Ignore files
-
-* `.unacceptablelanguageignore` – excludes paths from scanning
-
-#### Raw curl example
-
-```sh
-curl -s $(baseUrl)/check-unacceptable-language.sh | bash
-```
-
----
-
 ### generate-contributors-list.sh
 
 #### Purpose
@@ -445,6 +290,8 @@ Generates DocC documentation into the `docs/` directory.
 * Supports multiple Swift targets
 * Enables combined documentation automatically
 * Can transform output for static hosting
+* Temporarily adds `swift-docc-plugin` with SwiftPM when needed; no manifest placeholder is required
+* Restores the original `Package.swift` after generation
 
 #### Parameters
 
@@ -747,7 +594,7 @@ Validates Swift package structure and configuration to enforce project-wide conv
 * Ensures Swift tools version is 6.1 or newer
 * Requires defaultSwiftSettings usage on all targets
 * Enforces presence of the NonisolatedNonsendingByDefault Swift 6 concurrency feature
-* Validates top-level dependencies section and DocC placeholder
+* Validates the package manifest and target Swift settings
 * Checks required directory structure (Sources/, Tests/)
 * Ensures required repository files exist
 * Verifies LICENSE contains the current year

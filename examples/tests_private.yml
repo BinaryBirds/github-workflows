@@ -7,10 +7,6 @@ on:
 
 jobs:
 
-  api_breakage:
-    name: Check API breakage
-    uses: BinaryBirds/github-workflows/.github/workflows/api_breakage.yml@feature/breakage-workflow
-
   bb_checks:
     name: BB Checks
     uses: BinaryBirds/github-workflows/.github/workflows/extra_soundness.yml@main
@@ -25,7 +21,7 @@ jobs:
       format_check_enabled : true
       broken_symlink_check_enabled : true
       unacceptable_language_check_enabled : true
-      api_breakage_check_enabled : false
+      api_breakage_check_enabled : true
       docs_check_enabled : false
       license_header_check_enabled : false
       shell_check_enabled : false

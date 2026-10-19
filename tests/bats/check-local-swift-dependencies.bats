@@ -7,7 +7,7 @@ load 'helpers/test_helper.bash'
     copy_script_into_repo "$repo" "check-local-swift-dependencies.sh"
 
     cat >"$repo/Package.swift" <<'SWIFT'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(
@@ -31,7 +31,7 @@ SWIFT
     copy_script_into_repo "$repo" "check-local-swift-dependencies.sh"
 
     cat >"$repo/Package.swift" <<'SWIFT'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(
@@ -55,7 +55,7 @@ SWIFT
     copy_script_into_repo "$repo" "check-local-swift-dependencies.sh"
 
     cat >"$repo/Package.swift" <<'SWIFT'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(

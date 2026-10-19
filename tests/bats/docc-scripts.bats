@@ -7,7 +7,7 @@ load 'helpers/test_helper.bash'
     copy_script_into_repo "$repo" "generate-docc.sh"
 
     cat >"$repo/Package.swift" <<'SWIFT'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(
@@ -56,7 +56,7 @@ STUB
     copy_script_into_repo "$repo" "generate-docc.sh"
 
     cat >"$repo/Package.swift" <<'SWIFT'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(

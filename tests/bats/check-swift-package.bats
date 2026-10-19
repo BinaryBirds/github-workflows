@@ -27,7 +27,7 @@ EOF
 write_valid_package_swift() {
     local repo="$1"
     cat >"$repo/Package.swift" <<'EOF'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let defaultSwiftSettings: [SwiftSetting] = [
@@ -114,14 +114,14 @@ EOF
     [[ "$output" == *"Swift Package validation passed"* ]]
 }
 
-@test "check-swift-package fails when swift-tools-version is below 6.1" {
+@test "check-swift-package fails when swift-tools-version is below 6.3" {
     repo="$(make_temp_repo)"
     copy_script_into_repo "$repo" "check-swift-package.sh"
     setup_valid_swift_package_layout "$repo"
     write_valid_package_swift "$repo"
     install_swift_dump_stub_success "$repo"
 
-    sed -i.bak 's|// swift-tools-version: 6.1|// swift-tools-version: 5.9|' "$repo/Package.swift"
+    sed -i.bak 's|// swift-tools-version: 6.3|// swift-tools-version: 6.2|' "$repo/Package.swift"
     rm -f "$repo/Package.swift.bak"
 
     run bash -c "cd '$repo' && sh scripts/check-swift-package.sh"
@@ -148,7 +148,7 @@ EOF
     copy_script_into_repo "$repo" "check-swift-package.sh"
     setup_valid_swift_package_layout "$repo"
     cat >"$repo/Package.swift" <<'EOF'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let defaultSwiftSettings: [SwiftSetting] = [

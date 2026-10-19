@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: swift:6.2
+      image: swift:6.3
 
     steps:
       - name: Checkout repository
@@ -36,7 +36,7 @@ jobs:
           REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           curl --fail --show-error --location --silent \
-            https://raw.githubusercontent.com/BinaryBirds/github-workflows/refs/heads/main/scripts/generate-docc.sh \
+            https://raw.githubusercontent.com/BinaryBirds/github-workflows/0.2.0/scripts/generate-docc.sh \
             --output "$RUNNER_TEMP/generate-docc.sh"
           bash "$RUNNER_TEMP/generate-docc.sh" --name "$REPOSITORY_NAME"
 

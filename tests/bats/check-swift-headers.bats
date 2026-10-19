@@ -202,7 +202,7 @@ EOF2
 
 @test "Package.swift is skipped even without header" {
     cat >"$TMPDIR/Package.swift" <<'EOF2'
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(

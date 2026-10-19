@@ -49,10 +49,10 @@ if [ -n "$TOOLS_LINE" ]; then
     major="$(printf "%s" "$TOOLS_VERSION" | cut -d. -f1)"
     minor="$(printf "%s" "$TOOLS_VERSION" | cut -d. -f2)"
 
-    if [ "$major" -lt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -lt 1 ]; }; then
-        error "❌ swift-tools-version too old ($TOOLS_VERSION), expected >= 6.1"
+    if [ "$major" -lt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -lt 3 ]; }; then
+        error "❌ swift-tools-version too old ($TOOLS_VERSION), expected >= 6.3"
     else
-        log "✅ swift-tools-version >= 6.1 ($TOOLS_VERSION)"
+        log "✅ swift-tools-version >= 6.3 ($TOOLS_VERSION)"
     fi
 else
     error "❌ swift-tools-version missing"

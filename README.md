@@ -27,7 +27,7 @@ This workflow provides Binary Birds-specific checks and testing alongside the st
 * **Optional Swift Headers Check**: Validates Swift source file headers using a strict 5-line format and respects `.swiftheaderignore`.
 * **Optional Swift Test Execution**: Runs tests with optional **`.build` caching** for efficiency.
 * **Optional Swift Package Validation**: Validates Swift package structure, settings, and conventions to ensure consistency.
-* **Multi-Version Support**: Tests across multiple Swift versions, configurable via input (defaulting to `["6.0", "6.1"]`).
+* **Multi-Version Support**: Tests across Swift 6.3 and newer, configurable via input (defaulting to `["6.3", "6.4"]`).
 * **SSH Support**: Includes steps to set up **SSH credentials** (via the `SSH_PRIVATE_KEY` secret) for projects relying on private Git dependencies.
 
 #### Workflow Inputs
@@ -38,7 +38,7 @@ This workflow provides Binary Birds-specific checks and testing alongside the st
 | `headers_check_enabled` | Enables Swift headers validation | `false` |
 | `run_tests_with_cache_enabled` | Enables the Swift test job | `false` |
 | `tests_cache_enabled` | Enables `.build` cache restore/save in the Swift test job | `true` |
-| `run_tests_swift_versions` | Swift versions to test | `["6.1","6.2"]` |
+| `run_tests_swift_versions` | Swift versions to test (6.3 minimum) | `["6.3","6.4"]` |
 | `swift_package_validation_enabled` | Runs Swift package validation in the repository. | `false` |
 
 #### Example Usage (Caller Repository)
@@ -52,7 +52,7 @@ jobs:
       headers_check_enabled: true
       run_tests_with_cache_enabled: true
       tests_cache_enabled: true
-      run_tests_swift_versions: '["6.1","6.2"]'
+      run_tests_swift_versions: '["6.3","6.4"]'
       swift_package_validation_enabled: true
 ```
 
@@ -60,7 +60,7 @@ jobs:
 
 This workflow handles the generation and deployment of DocC documentation:
 
-* **Builds DocC Documentation**: Uses a Swift 6.2 Docker image to build the documentation.
+* **Builds DocC Documentation**: Uses a Swift 6.3 Docker image to build the documentation.
 * **Deploys to GitHub Pages**: Uses `actions/deploy-pages@v6` to publish the results.
 * **Target Configuration**: Respects `.docctargetlist` if present.
 
@@ -591,7 +591,7 @@ Validates Swift package structure and configuration to enforce project-wide conv
 #### Behavior
 
 * Verifies Package.swift presence and Swift tools version
-* Ensures Swift tools version is 6.1 or newer
+* Ensures Swift tools version is 6.3 or newer
 * Requires defaultSwiftSettings usage on all targets
 * Enforces presence of the NonisolatedNonsendingByDefault Swift 6 concurrency feature
 * Validates the package manifest and target Swift settings
